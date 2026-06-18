@@ -22,6 +22,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Embed parish boundary GeoJSON
+        run: |
+          python3 - << 'PYEOF'
+          import urllib.request, json, re, time, sys
+
+          PARISHES = [
+              'custóias', 'guifões', 'leça do balio', 'matosinhos',
+              'leça da palmeira', 'são mamede de infesta', 'perafita',
+              'lavra', 'santa cruz do bispo', 'senhora da hora'
+          ]
+
+          results = {}
+          for name in PARISHES:
+              url = ('https://geoapi.pt/municipio/matosinhos/freguesia/'
+                     + urllib.parse.quote(name) + '?json=1')
+              try:
+                  req = urllib.request.Request(
+                      url, headers={'User-Agent': 'MOVESIT-deploy/1.0'})
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      content = r.read().decode('utf-8')
+                  content = re.sub(r':,', ':null,', content)
+                  data = json.loads(content)
+                  gj = data.get('geojson')
+                  if gj and gj.get('geometry', {}).get('coordinates'):
+                      results[name] = gj
+                      print(f'✓ {name}', flush=True)
+                  else:
+                      print(f'⚠ {name}: no geometry', flush=True)
+              except Exception as e:
+                  print(f'✗ {name}: {e}', flush=True)
+              time.sleep(0.4)
+
+          if not results:
+              print('No boundaries fetched — skipping injection', flush=True)
+              sys.exit(0)
+
+          geojson_js = 'var BOUNDARY_GEOJSON = ' + json.dumps(results, ensure_ascii=False) + ';'
+
+          with open('matosinhos_map.html', 'r', encoding='utf-8') as f:
+              html = f.read()
+
+          html = html.replace('var BOUNDARY_GEOJSON = {};', geojson_js, 1)
+
+          with open('matosinhos_map.html', 'w', encoding='utf-8') as f:
+              f.write(html)
+
+          print(f'Injected {len(results)}/10 parish boundaries into HTML', flush=True)
+          PYEOF
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

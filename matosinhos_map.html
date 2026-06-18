@@ -42,7 +42,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 #toggle-boundaries.active { background: rgba(100,200,150,0.3); border-color: rgba(100,200,150,0.6); }
 
 #main { display: flex; flex: 1; overflow: hidden; }
-#map  { flex: 1; z-index: 1; position: relative; }
+#map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
 
 #sidebar {
   width: 340px; min-width: 340px; background: #1a1a2e; color: #e0e0e0;
@@ -235,10 +235,8 @@ var CNT_IDS = {
   'Leça do Balio': 'cnt-leca', 'Perafita': 'cnt-pera'
 };
 
-var GEOAPI = 'https://geoapi.pt';
-
-// Pre-2013 parish name → Excel group (geoapi.pt uses old names for boundaries)
-var SUBPARISH_GROUP = {
+// 10 parishes of Matosinhos municipality → display color group
+var PARISH_GROUP = {
   'custóias':              'Leça do Balio',
   'guifões':               'Leça do Balio',
   'leça do balio':         'Leça do Balio',
@@ -250,7 +248,10 @@ var SUBPARISH_GROUP = {
   'santa cruz do bispo':   'Perafita',
   'senhora da hora':       'Senhora da Hora'
 };
-var SUBPARISHES = Object.keys(SUBPARISH_GROUP);
+
+// GeoJSON boundary polygons — injected at deploy time by GitHub Actions.
+// var BOUNDARY_GEOJSON = { "senhora da hora": { GeoJSON Feature }, … };
+var BOUNDARY_GEOJSON = {};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -327,6 +328,9 @@ function openSidebar(entry) {
 
   var g = '<dt>Morada</dt><dd>' + entry.rec.address + '</dd>'
         + '<dt>Freguesia</dt><dd>' + entry.rec.parish + '</dd>'
+        + (entry.rec.phone ? '<dt>Telm.</dt><dd>' + entry.rec.phone + '</dd>' : '')
+        + (entry.rec.email ? '<dt>Email</dt><dd><a href="mailto:' + entry.rec.email
+           + '" style="color:#7ec8e3">' + entry.rec.email + '</a></dd>' : '')
         + '<dt>Coordenadas</dt><dd>' + entry.lat.toFixed(5) + '° N, '
         + Math.abs(entry.lon).toFixed(5) + '° W</dd>';
   document.getElementById('s-info-grid').innerHTML = g;
@@ -407,58 +411,42 @@ function updateCounts() {
   });
 }
 
-// ─── PARISH BOUNDARIES via geoapi.pt ─────────────────────────────────────────
-function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
-
-async function fetchBoundaries() {
-  var btn = document.getElementById('toggle-boundaries');
-  btn.textContent = '&#9203; A carregar…';
-  var total = SUBPARISHES.length;
-  var done  = 0;
-
-  for (var i = 0; i < total; i++) {
-    var name  = SUBPARISHES[i];
-    var group = SUBPARISH_GROUP[name];
+// ─── PARISH BOUNDARIES (pre-embedded GeoJSON, injected at deploy time) ────────
+function drawBoundaries() {
+  Object.keys(PARISH_GROUP).forEach(function(name) {
+    var gj = BOUNDARY_GEOJSON[name];
+    if (!gj) return;
+    var group = PARISH_GROUP[name];
     var color = PARISH_COLOR[group] || '#888';
-    var url   = GEOAPI + '/municipio/matosinhos/freguesia/'
-              + encodeURIComponent(name) + '?json=1';
-    try {
-      var resp = await fetch(url);
-      if (!resp.ok) { done++; continue; }
-      var data = await resp.json();
-      if (!data.geojson) { done++; continue; }
-
-      var layer = L.geoJSON(data.geojson, {
-        style: { color: color, weight: 2, opacity: 0.85, fillColor: color, fillOpacity: 0.12 }
-      });
-      layer.bindTooltip(
-        '<b>' + data.nome + '</b><br><small style="opacity:.7">' + group + '</small>',
-        { sticky: true }
-      );
-      layer.addTo(map);
-      boundaryLayers.push(layer);
-      done++;
-      btn.textContent = '&#9203; ' + done + '/' + total;
-    } catch(e) { done++; }
-    await sleep(300);
-  }
-
-  btn.textContent = '&#128205; Limites &#10003;';
-  btn.classList.add('active');
+    var layer = L.geoJSON(gj, {
+      style: { color: color, weight: 2.5, opacity: 0.9,
+               fillColor: color, fillOpacity: 0.22 }
+    });
+    var label = (gj.properties && gj.properties.nome) ? gj.properties.nome : name;
+    layer.bindTooltip(
+      '<b>' + label + '</b><br><small style="opacity:.7">' + group + '</small>',
+      { sticky: true }
+    );
+    layer.addTo(map);
+    boundaryLayers.push(layer);
+  });
 }
 
 function toggleBoundaries() {
+  var btn = document.getElementById('toggle-boundaries');
   if (!boundariesOn) {
+    if (Object.keys(BOUNDARY_GEOJSON).length === 0) {
+      btn.textContent = '&#128205; Limites (N/D)';
+      return;
+    }
+    drawBoundaries();
     boundariesOn = true;
-    fetchBoundaries().catch(function() {
-      document.getElementById('toggle-boundaries').textContent = '&#128205; Limites (erro)';
-      boundariesOn = false;
-    });
+    btn.textContent = '&#128205; Limites &#10003;';
+    btn.classList.add('active');
   } else {
     boundaryLayers.forEach(function(l) { if (map.hasLayer(l)) map.removeLayer(l); });
     boundaryLayers = [];
     boundariesOn   = false;
-    var btn = document.getElementById('toggle-boundaries');
     btn.textContent = '&#128205; Limites';
     btn.classList.remove('active');
   }
