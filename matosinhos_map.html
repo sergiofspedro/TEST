@@ -84,7 +84,6 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 .geocode-ok    { color: #4caf50; }
 .geocode-fail  { color: #f44336; }
 .geocode-approx { color: #ff9800; }
-.geocode-warn  { color: #ff9800; }
 
 #legend {
   position: absolute; bottom: 30px; left: 16px; z-index: 500;
@@ -97,14 +96,6 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 .leg-row:hover { opacity: 0.75; }
 .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
 .leg-row.dim { opacity: 0.35; }
-
-#geocode-badge {
-  position: absolute; bottom: 140px; left: 16px; z-index: 500;
-  background: rgba(22,33,62,0.95); padding: 7px 12px; border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-size: 12px; color: #e0e0e0;
-  border: 1px solid rgba(255,255,255,0.1); display: none;
-  max-width: 220px; line-height: 1.5;
-}
 
 #no-results {
   display: none; position: absolute; top: 50%; left: 50%;
@@ -146,7 +137,6 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
       <div class="leg-row" id="leg-pera" onclick="toggleFilter('Perafita')">
         <div class="leg-dot" style="background:#F4A261;"></div> Perafita <span id="cnt-pera"></span></div>
     </div>
-    <div id="geocode-badge"></div>
     <div id="no-results">Nenhum residente corresponde ao filtro.</div>
   </div>
   <div id="sidebar">
@@ -173,62 +163,60 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 
 <script>
 // ─── DATA ────────────────────────────────────────────────────────────────────
-// 19 addresses have pre-geocoded coordinates (lat/lon) from geoapi.pt national address DB.
-// The remaining 34 are geocoded in the background via Nominatim after the map loads.
 var ADDRESSES = [
-  {"name":"Ana Gabriela Velasquez de Azevedo e Silva","address":"R. da Quinta Seca 196, 2E","parish":"Senhora da Hora"},
-  {"name":"Anabela Alves Dias Pinto","address":"Rua Funde de Vila, 173 1 andar","parish":"Senhora da Hora"},
-  {"name":"Raquel Maria Oliveira Menezes","address":"Rua João H. Ulrich 232, 1ºesq 4460-333 Senhora da Hora","parish":"Senhora da Hora","lat":41.190629,"lon":-8.657351,"geoStatus":"ok"},
-  {"name":"Carlos Manuel Morais Pinheiro da Costa","address":"Rua João Villaret, 103, 4460-336 Senhora da Hora","parish":"Senhora da Hora","lat":41.186698,"lon":-8.652671,"geoStatus":"ok"},
-  {"name":"Marina Ferreira Borges","address":"Rua Augusto Lessa 473 RC DRT","parish":"Senhora da Hora"},
-  {"name":"Ana Luísa Cachinho Pereira Pinto","address":"Rua Companhia dos Caulinos 678 RC Dto","parish":"Senhora da Hora"},
-  {"name":"Maria João Monteiro Pereira Rebola","address":"Rua das Andorinhas, 50 Senhora da Hora","parish":"Senhora da Hora"},
-  {"name":"Carlos Miguel Santos Oliveira","address":"Rua Quinta do Viso 156, Entrada 5, 1ºD","parish":"Senhora da Hora"},
-  {"name":"Gabriela Filipa Bastião Saraiva","address":"Av. Vasco da Gama, 931 4460-435 Senhora da Hora","parish":"Senhora da Hora","lat":41.190443,"lon":-8.660229,"geoStatus":"approx"},
-  {"name":"Agostinho Olindo Neto Ferreira","address":"Rua Florbela Espanca Ent 100, 3º esq.","parish":"Matosinhos"},
-  {"name":"Juliana Zmetáková","address":"Rua Conde Alto Mearim 1396 4 tras., 4450-031, Matosinhos","parish":"Matosinhos","lat":41.18018,"lon":-8.680048,"geoStatus":"ok"},
-  {"name":"Carlos Martinho Conceição Aleixo","address":"Bairro de Carcavelos, bloco 1 b, casa 4","parish":"Matosinhos"},
-  {"name":"Carlos Manuel de Sousa Carvalho","address":"Rua 25 de abril 37 2 esquerdo 4450-304","parish":"Matosinhos","lat":41.181854,"lon":-8.672012,"geoStatus":"approx"},
-  {"name":"Isabel Maria Carneiro Santos Silva Marques","address":"Rua Real de baixo, 285 r/chão trás","parish":"Matosinhos"},
-  {"name":"Sara Manuela Correia","address":"Rua Raúl Brandão, entrada 67, casa 6","parish":"Matosinhos"},
-  {"name":"Catarina da Costa Moura","address":"Rua Goa 9, 2º Esquerdo","parish":"Matosinhos"},
-  {"name":"Cláudia Manuela Fernandes Silveira Viana","address":"Rua de S.Roque, 150 4450-245 Matosinhos","parish":"Matosinhos","lat":41.186548,"lon":-8.69043,"geoStatus":"ok"},
-  {"name":"Ricardo Rosa","address":"Rua José Joaquim Gomes da Silva, 55, 5Esq, 4450-171 Matosinhos","parish":"Matosinhos","lat":41.174446,"lon":-8.686669,"geoStatus":"ok"},
-  {"name":"Cármen de Jesus Barbosa Dantes Moreira","address":"Rua Padre José Pacheco de Monte 371 r/ch","parish":"Matosinhos"},
-  {"name":"Eufrosina Rosa M Vieira Sousa","address":"Avenida Dr Germano Vieira 1048 4 frente Guinfães Maia","parish":"Matosinhos"},
-  {"name":"Sónia Marlene Pereira Galego","address":"Rua de Manhufe n54 traseiras 4450-180","parish":"Matosinhos","lat":41.188128,"lon":-8.678238,"geoStatus":"approx"},
-  {"name":"Gonçalo Lopes Cruz","address":"Rua Aquilino Ribeiro nº944 Famões","parish":"Matosinhos"},
-  {"name":"Carla Filipa Alcobia Pires","address":"Rua do Mar Apertado 11 Matosinhos","parish":"Matosinhos"},
-  {"name":"Clara Alexandra Geraldes Fernandes","address":"Avenida Serpa Pinto, número 712- 6 esquerdo 4450-279 Matosinhos","parish":"Matosinhos","lat":41.180511,"lon":-8.691296,"geoStatus":"ok"},
-  {"name":"Margarida Alexandra de Almeida Santos","address":"Rua dos Pescadores, 344","parish":"Matosinhos"},
-  {"name":"Marta Duarte Lameirão","address":"Rua Salgueiro Maia, 145, 3º Dt 4460-802","parish":"Leça do Balio","lat":41.20485,"lon":-8.646758,"geoStatus":"ok"},
-  {"name":"Admilo Ribeiro","address":"Rua Alves Redol 66","parish":"Leça do Balio"},
-  {"name":"Marlene Isabel Lopes Valeixo","address":"Rua Elaine Sanceau nr 234 3 esq. traseira","parish":"Leça do Balio"},
-  {"name":"Matilde Caria Seidedos Secca de Oliveira","address":"Rua Mainça 237, Leça do Balio","parish":"Leça do Balio"},
-  {"name":"Thayna Bustamante de Oliveira","address":"Rua Comandante Quelhas Lima, 84, 2 esquerdo","parish":"Leça do Balio"},
-  {"name":"Sónia Cunha","address":"R de Picoutos 163","parish":"Leça do Balio"},
-  {"name":"Maria Luísa Lima Santos","address":"Rua Sousa Prata, 130","parish":"Leça do Balio"},
-  {"name":"Beatriz Lopo Teixeira","address":"Rua António Barbosa da Silva, 145 Cidade da Maia 4470-031- Maia","parish":"Leça do Balio","lat":41.224637,"lon":-8.611038,"geoStatus":"ok"},
-  {"name":"Francisca Vieira Abrunhosa Branco","address":"Estrada da Circunvalação 10327 R/C, 4250-151 Porto","parish":"Leça do Balio","lat":41.179226,"lon":-8.629718,"geoStatus":"approx"},
-  {"name":"Raphael","address":"Travessa Canto 17 4465-052","parish":"Leça do Balio","lat":41.191762,"lon":-8.618834,"geoStatus":"approx"},
-  {"name":"Claudia Alemão","address":"Rua Monte do Vale 20 Leça do Balio","parish":"Leça do Balio"},
-  {"name":"Juliana Mafalda Polido Monteiro","address":"Praceta Ponte da Pedra 66 hab 11","parish":"Leça do Balio"},
-  {"name":"José Joaquim Pereira de Freitas","address":"Rua António Fragoso 328 4460-669 Custóias","parish":"Leça do Balio","lat":41.202628,"lon":-8.638061,"geoStatus":"approx"},
-  {"name":"Helder Miguel Maia Oliveira","address":"Alameda das Ribeiras nº89 2 esq. 4455-578 Perafita","parish":"Perafita","lat":41.227973,"lon":-8.689303,"geoStatus":"approx"},
-  {"name":"Solange Catarina da Silva Cunha","address":"Travessa Ramalho Ortigão entrada 103 3ºdireito","parish":"Perafita"},
-  {"name":"Bárbara Dos Santos Duarte","address":"Rua Nicolau Tolentino, nº44 CP-4455-555","parish":"Perafita","lat":41.227462,"lon":-8.701797,"geoStatus":"ok"},
-  {"name":"Inês Fernanda Maia Pereira","address":"Rua Silva Aroso, 962","parish":"Perafita"},
-  {"name":"Bárbara Raquel Dias Alves","address":"Travessa Ramalho Ortigão 119 1 Esquerdo","parish":"Perafita"},
-  {"name":"Filipa de Jesus Pereira","address":"Rua Ramalho Ortigão 15 4455-537 Perafita","parish":"Perafita","lat":41.223208,"lon":-8.700854,"geoStatus":"ok"},
-  {"name":"Fernando Marantes Ribeiro","address":"Rua França Junior 692 Matosinhos","parish":"Perafita"},
-  {"name":"Mafalda Daniela Fonseca da Silva Santos","address":"Travessa da Agra, 267-3ºB, 4450-599 Matosinhos","parish":"Perafita","lat":41.196614,"lon":-8.698,"geoStatus":"ok"},
-  {"name":"Anabela Abreu Ferreira Grilo","address":"Rua de Antão Gonçalves, 185 4455 Lavra","parish":"Perafita"},
-  {"name":"Diana Marisa Dias","address":"Rua de Almeiriga Norte 2694 4455-418 Perafita","parish":"Perafita","lat":41.226506,"lon":-8.71653,"geoStatus":"ok"},
-  {"name":"Delfim Leite da Silva","address":"Av. Dr. Fernando Aroso","parish":"Perafita"},
-  {"name":"Maria Aragão","address":"Rua Doutor Afonso Cordeiro, 899- 1 FTE., 4470-007 Matosinhos","parish":"Perafita"},
-  {"name":"Elisangela de Fatima Pereira e Costa","address":"Rua Dom Armindo Lopes Coelho, nº33, apart. 03 Maia","parish":"Perafita"},
-  {"name":"Guilherme Rodrigo de Oliveira Campos Costa Couto","address":"Rua Almeiriga Norte 2088, Perafita","parish":"Perafita"},
-  {"name":"Alexandra Sampaio","address":"Avenida das Ribeiras 875 2ºEsq","parish":"Perafita"}
+  {"name":"Ana Gabriela Velasquez de Azevedo e Silva","address":"R. da Quinta Seca 196, 2E","parish":"Senhora da Hora","lat":41.181712,"lon":-8.667468,"geoStatus":"ok"},
+  {"name":"Anabela Alves Dias Pinto","address":"Rua Funde de Vila, 173 1 andar","parish":"Senhora da Hora","lat":41.185484,"lon":-8.671672,"geoStatus":"ok"},
+  {"name":"Raquel Maria Oliveira Menezes","address":"Rua João H. Ulrich 232, 1ºesq 4460-333 Senhora da Hora","parish":"Senhora da Hora","lat":41.190766,"lon":-8.657403,"geoStatus":"ok"},
+  {"name":"Carlos Manuel Morais Pinheiro da Costa","address":"Rua João Villaret, 103, 4460-336 Senhora da Hora","parish":"Senhora da Hora","lat":41.186719,"lon":-8.652678,"geoStatus":"ok"},
+  {"name":"Marina Ferreira Borges","address":"Rua Augusto Lessa 473 RC DRT","parish":"Senhora da Hora","lat":41.1871,"lon":-8.6579,"geoStatus":"fallback"},
+  {"name":"Ana Luísa Cachinho Pereira Pinto","address":"Rua Companhia dos Caulinos 678 RC Dto","parish":"Senhora da Hora","lat":41.188895,"lon":-8.636432,"geoStatus":"ok"},
+  {"name":"Maria João Monteiro Pereira Rebola","address":"Rua das Andorinhas, 50 Senhora da Hora","parish":"Senhora da Hora","lat":41.187524,"lon":-8.660769,"geoStatus":"ok"},
+  {"name":"Carlos Miguel Santos Oliveira","address":"Rua Quinta do Viso 156, Entrada 5, 1ºD","parish":"Senhora da Hora","lat":41.185713,"lon":-8.64283,"geoStatus":"ok"},
+  {"name":"Gabriela Filipa Bastião Saraiva","address":"Av. Vasco da Gama, 931 4460-435 Senhora da Hora","parish":"Senhora da Hora","lat":41.1911,"lon":-8.659393,"geoStatus":"ok"},
+  {"name":"Agostinho Olindo Neto Ferreira","address":"Rua Florbela Espanca Ent 100, 3º esq.","parish":"Matosinhos","lat":41.174972,"lon":-8.674326,"geoStatus":"ok"},
+  {"name":"Juliana Zmetáková","address":"Rua Conde Alto Mearim 1396 4 tras., 4450-031, Matosinhos","parish":"Matosinhos","lat":41.180162,"lon":-8.679991,"geoStatus":"ok"},
+  {"name":"Carlos Martinho Conceição Aleixo","address":"Bairro de Carcavelos, bloco 1 b, casa 4","parish":"Matosinhos","lat":41.180655,"lon":-8.679918,"geoStatus":"ok"},
+  {"name":"Carlos Manuel de Sousa Carvalho","address":"Rua 25 de abril 37 2 esquerdo 4450-304","parish":"Matosinhos","lat":41.181623,"lon":-8.672211,"geoStatus":"ok"},
+  {"name":"Isabel Maria Carneiro Santos Silva Marques","address":"Rua Real de baixo, 285 r/chão trás","parish":"Matosinhos","lat":41.178332,"lon":-8.674706,"geoStatus":"ok"},
+  {"name":"Sara Manuela Correia","address":"Rua Raúl Brandão, entrada 67, casa 6","parish":"Matosinhos","lat":41.175748,"lon":-8.672271,"geoStatus":"ok"},
+  {"name":"Catarina da Costa Moura","address":"Rua Goa 9, 2º Esquerdo","parish":"Matosinhos","lat":41.183811,"lon":-8.680765,"geoStatus":"ok"},
+  {"name":"Cláudia Manuela Fernandes Silveira Viana","address":"Rua de S.Roque, 150 4450-245 Matosinhos","parish":"Matosinhos","lat":41.186576,"lon":-8.690431,"geoStatus":"ok"},
+  {"name":"Ricardo Rosa","address":"Rua José Joaquim Gomes da Silva, 55, 5Esq, 4450-171 Matosinhos","parish":"Matosinhos","lat":41.174426,"lon":-8.686585,"geoStatus":"ok"},
+  {"name":"Cármen de Jesus Barbosa Dantes Moreira","address":"Rua Padre José Pacheco de Monte 371 r/ch","parish":"Matosinhos","lat":41.191808,"lon":-8.667613,"geoStatus":"ok"},
+  {"name":"Eufrosina Rosa M Vieira Sousa","address":"Avenida Dr Germano Vieira 1048 4 frente Guinfães Maia","parish":"Matosinhos","lat":41.215029,"lon":-8.608247,"geoStatus":"ok"},
+  {"name":"Sónia Marlene Pereira Galego","address":"Rua de Manhufe n54 traseiras 4450-180","parish":"Matosinhos","lat":41.188714,"lon":-8.678745,"geoStatus":"ok"},
+  {"name":"Gonçalo Lopes Cruz","address":"Rua Aquilino Ribeiro nº944 Famões","parish":"Matosinhos","lat":41.1833,"lon":-8.6883,"geoStatus":"fallback"},
+  {"name":"Carla Filipa Alcobia Pires","address":"Rua do Mar Apertado 11 Matosinhos","parish":"Matosinhos","lat":41.188048,"lon":-8.680607,"geoStatus":"ok"},
+  {"name":"Clara Alexandra Geraldes Fernandes","address":"Avenida Serpa Pinto, número 712- 6 esquerdo 4450-279 Matosinhos","parish":"Matosinhos","lat":41.180531,"lon":-8.691331,"geoStatus":"ok"},
+  {"name":"Margarida Alexandra de Almeida Santos","address":"Rua dos Pescadores, 344","parish":"Matosinhos","lat":41.263883,"lon":-8.724741,"geoStatus":"ok"},
+  {"name":"Marta Duarte Lameirão","address":"Rua Salgueiro Maia, 145, 3º Dt 4460-802","parish":"Leça do Balio","lat":41.204782,"lon":-8.646819,"geoStatus":"ok"},
+  {"name":"Admilo Ribeiro","address":"Rua Alves Redol 66","parish":"Leça do Balio","lat":41.20065,"lon":-8.635603,"geoStatus":"ok"},
+  {"name":"Marlene Isabel Lopes Valeixo","address":"Rua Elaine Sanceau nr 234 3 esq. traseira","parish":"Leça do Balio","lat":41.19052,"lon":-8.630341,"geoStatus":"ok"},
+  {"name":"Matilde Caria Seidedos Secca de Oliveira","address":"Rua Mainça 237, Leça do Balio","parish":"Leça do Balio","lat":41.204687,"lon":-8.624224,"geoStatus":"ok"},
+  {"name":"Thayna Bustamante de Oliveira","address":"Rua Comandante Quelhas Lima, 84, 2 esquerdo","parish":"Leça do Balio","lat":41.195422,"lon":-8.614038,"geoStatus":"ok"},
+  {"name":"Sónia Cunha","address":"R de Picoutos 163","parish":"Leça do Balio","lat":41.189858,"lon":-8.625074,"geoStatus":"ok"},
+  {"name":"Maria Luísa Lima Santos","address":"Rua Sousa Prata, 130","parish":"Leça do Balio","lat":41.221096,"lon":-8.636373,"geoStatus":"ok"},
+  {"name":"Beatriz Lopo Teixeira","address":"Rua António Barbosa da Silva, 145 Cidade da Maia 4470-031- Maia","parish":"Leça do Balio","lat":41.22468,"lon":-8.61108,"geoStatus":"ok"},
+  {"name":"Francisca Vieira Abrunhosa Branco","address":"Estrada da Circunvalação 10327 R/C, 4250-151 Porto","parish":"Leça do Balio","lat":41.179249,"lon":-8.629696,"geoStatus":"ok"},
+  {"name":"Raphael","address":"Travessa Canto 17 4465-052","parish":"Leça do Balio","lat":41.19198,"lon":-8.618704,"geoStatus":"ok"},
+  {"name":"Claudia Alemão","address":"Rua Monte do Vale 20 Leça do Balio","parish":"Leça do Balio","lat":41.215694,"lon":-8.636613,"geoStatus":"ok"},
+  {"name":"Juliana Mafalda Polido Monteiro","address":"Praceta Ponte da Pedra 66 hab 11","parish":"Leça do Balio","lat":41.205711,"lon":-8.613761,"geoStatus":"ok"},
+  {"name":"José Joaquim Pereira de Freitas","address":"Rua António Fragoso 328 4460-669 Custóias","parish":"Leça do Balio","lat":41.20263,"lon":-8.638004,"geoStatus":"ok"},
+  {"name":"Helder Miguel Maia Oliveira","address":"Alameda das Ribeiras nº89 2 esq. 4455-578 Perafita","parish":"Perafita","lat":41.227863,"lon":-8.689459,"geoStatus":"ok"},
+  {"name":"Solange Catarina da Silva Cunha","address":"Travessa Ramalho Ortigão entrada 103 3ºdireito","parish":"Perafita","lat":41.224264,"lon":-8.700672,"geoStatus":"ok"},
+  {"name":"Bárbara Dos Santos Duarte","address":"Rua Nicolau Tolentino, nº44 CP-4455-555","parish":"Perafita","lat":41.22291,"lon":-8.700736,"geoStatus":"ok"},
+  {"name":"Inês Fernanda Maia Pereira","address":"Rua Silva Aroso, 962","parish":"Perafita","lat":41.233352,"lon":-8.699061,"geoStatus":"ok"},
+  {"name":"Bárbara Raquel Dias Alves","address":"Travessa Ramalho Ortigão 119 1 Esquerdo","parish":"Perafita","lat":41.224264,"lon":-8.700672,"geoStatus":"ok"},
+  {"name":"Filipa de Jesus Pereira","address":"Rua Ramalho Ortigão 15 4455-537 Perafita","parish":"Perafita","lat":41.223256,"lon":-8.700865,"geoStatus":"ok"},
+  {"name":"Fernando Marantes Ribeiro","address":"Rua França Junior 692 Matosinhos","parish":"Perafita","lat":41.18242,"lon":-8.688295,"geoStatus":"ok"},
+  {"name":"Mafalda Daniela Fonseca da Silva Santos","address":"Travessa da Agra, 267-3ºB, 4450-599 Matosinhos","parish":"Perafita","lat":41.19662,"lon":-8.697967,"geoStatus":"ok"},
+  {"name":"Anabela Abreu Ferreira Grilo","address":"Rua de Antão Gonçalves, 185 4455 Lavra","parish":"Perafita","lat":41.25051,"lon":-8.722829,"geoStatus":"ok"},
+  {"name":"Diana Marisa Dias","address":"Rua de Almeiriga Norte 2694 4455-418 Perafita","parish":"Perafita","lat":41.2265,"lon":-8.716461,"geoStatus":"ok"},
+  {"name":"Delfim Leite da Silva","address":"Av. Dr. Fernando Aroso","parish":"Perafita","lat":41.193253,"lon":-8.696712,"geoStatus":"ok"},
+  {"name":"Maria Aragão","address":"Rua Doutor Afonso Cordeiro, 899- 1 FTE., 4470-007 Matosinhos","parish":"Perafita","lat":41.173996,"lon":-8.684747,"geoStatus":"ok"},
+  {"name":"Elisangela de Fatima Pereira e Costa","address":"Rua Dom Armindo Lopes Coelho, nº33, apart. 03 Maia","parish":"Perafita","lat":41.226222,"lon":-8.621864,"geoStatus":"ok"},
+  {"name":"Guilherme Rodrigo de Oliveira Campos Costa Couto","address":"Rua Almeiriga Norte 2088, Perafita","parish":"Perafita","lat":41.221468,"lon":-8.713917,"geoStatus":"ok"},
+  {"name":"Alexandra Sampaio","address":"Avenida das Ribeiras 875 2ºEsq","parish":"Perafita","lat":41.231601,"lon":-8.693716,"geoStatus":"ok"}
 ];
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
@@ -247,31 +235,22 @@ var CNT_IDS = {
   'Leça do Balio': 'cnt-leca', 'Perafita': 'cnt-pera'
 };
 
-// Pre-2013 parish name → Excel group (geoapi.pt uses old names)
+var GEOAPI = 'https://geoapi.pt';
+
+// Pre-2013 parish name → Excel group (geoapi.pt uses old names for boundaries)
 var SUBPARISH_GROUP = {
-  'custóias':           'Leça do Balio',
-  'guifões':            'Leça do Balio',
-  'leça do balio':      'Leça do Balio',
-  'matosinhos':         'Matosinhos',
-  'leça da palmeira':   'Matosinhos',
+  'custóias':              'Leça do Balio',
+  'guifões':               'Leça do Balio',
+  'leça do balio':         'Leça do Balio',
+  'matosinhos':            'Matosinhos',
+  'leça da palmeira':      'Matosinhos',
   'são mamede de infesta': 'Matosinhos',
-  'perafita':           'Perafita',
-  'lavra':              'Perafita',
-  'santa cruz do bispo':'Perafita',
-  'senhora da hora':    'Senhora da Hora'
+  'perafita':              'Perafita',
+  'lavra':                 'Perafita',
+  'santa cruz do bispo':   'Perafita',
+  'senhora da hora':       'Senhora da Hora'
 };
 var SUBPARISHES = Object.keys(SUBPARISH_GROUP);
-
-var NOMINATIM = 'https://nominatim.openstreetmap.org';
-var GEOAPI    = 'https://geoapi.pt';
-var CACHE_KEY = 'movesit_geocode_v4';
-
-var PARISH_FALLBACK = {
-  'Senhora da Hora': [41.1871, -8.6579],
-  'Matosinhos':      [41.1833, -8.6883],
-  'Leça do Balio':   [41.2126, -8.6318],
-  'Perafita':        [41.2333, -8.7000]
-};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -313,107 +292,16 @@ function makeIcon(color, selected, failed) {
                      iconAnchor: [size, size*2.4], popupAnchor: [0, -(size*2)], className: '' });
 }
 
-// ─── GEOCODING (background, for addresses without pre-embedded coords) ────────
-function loadCache() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
-  catch(e) { return {}; }
-}
-function saveCache(c) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch(e) {}
-}
-function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
-
-async function geocodeOne(rec, cache) {
-  var key = rec.name + '||' + rec.address;
-  if (cache[key]) return cache[key];
-
-  var queries = [
-    rec.address + ', ' + rec.parish + ', Matosinhos, Portugal',
-    rec.address + ', Matosinhos, Portugal',
-    rec.address + ', Portugal'
-  ];
-
-  for (var i = 0; i < queries.length; i++) {
-    try {
-      var url = NOMINATIM + '/search?format=json&limit=1&countrycodes=pt'
-              + '&q=' + encodeURIComponent(queries[i]);
-      var resp = await fetch(url, { headers: { 'User-Agent': 'MOVESIT-Matosinhos/1.0' } });
-      if (!resp.ok) { await sleep(2000); continue; }
-      var data = await resp.json();
-      if (data && data.length > 0) {
-        var res = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon),
-                    display: data[0].display_name, status: i === 0 ? 'ok' : 'approx',
-                    geoParish: null };
-        try {
-          var gurl = GEOAPI + '/gps/' + res.lat + ',' + res.lon + '/base?json=1';
-          var gr   = await fetch(gurl);
-          if (gr.ok) {
-            var gd = await gr.json();
-            if (gd && gd.freguesia) res.geoParish = gd.freguesia;
-          }
-        } catch(e2) {}
-        cache[key] = res;
-        saveCache(cache);
-        return res;
-      }
-    } catch(e) {}
-    await sleep(1100);
-  }
-
-  var fb  = PARISH_FALLBACK[rec.parish] || [41.195, -8.68];
-  var res = { lat: fb[0], lon: fb[1], display: rec.parish + ' (centróide)', status: 'fallback', geoParish: rec.parish };
-  cache[key] = res;
-  saveCache(cache);
-  return res;
-}
-
-async function geocodeBackground(toGeocode) {
-  var badge = document.getElementById('geocode-badge');
-  var n = toGeocode.length;
-  badge.style.display = 'block';
-  badge.innerHTML = '&#9203; A localizar ' + n + ' moradas…';
-
-  var cache = loadCache();
-  for (var i = 0; i < n; i++) {
-    var rec = toGeocode[i];
-    badge.innerHTML = '&#9203; A localizar… ' + (i+1) + '/' + n;
-    var geo = await geocodeOne(rec, cache);
-    // Update or add marker (may already exist as fallback)
-    var existing = null;
-    for (var j = 0; j < markers.length; j++) {
-      if (markers[j].rec === rec) { existing = markers[j]; break; }
-    }
-    if (existing) {
-      existing.lat = geo.lat;
-      existing.lon = geo.lon;
-      existing.status = geo.status;
-      existing.display = geo.display;
-      existing.geoParish = geo.geoParish;
-      existing.marker.setLatLng([geo.lat, geo.lon]);
-      existing.marker.setIcon(makeIcon(PARISH_COLOR[rec.parish]||'#aaa', false, geo.status==='fallback'));
-    } else {
-      addMarker(rec, geo);
-    }
-    updateCounts();
-    applyFilters();
-    if (geo.status !== 'fallback') await sleep(1100);
-  }
-
-  badge.innerHTML = '&#10003; ' + n + ' moradas localizadas';
-  setTimeout(function() { badge.style.display = 'none'; }, 4000);
-}
-
 // ─── MARKERS ─────────────────────────────────────────────────────────────────
-function addMarker(rec, geo) {
+function addMarker(rec) {
   var color  = PARISH_COLOR[rec.parish] || '#aaa';
-  var failed = (geo.status === 'fallback');
-  var marker = L.marker([geo.lat, geo.lon], { icon: makeIcon(color, false, failed) })
+  var failed = (rec.geoStatus === 'fallback');
+  var marker = L.marker([rec.lat, rec.lon], { icon: makeIcon(color, false, failed) })
     .addTo(map)
     .bindTooltip(rec.name, { permanent: false, direction: 'top' });
 
-  var entry = { rec: rec, marker: marker, lat: geo.lat, lon: geo.lon,
-                status: geo.status, display: geo.display,
-                geoParish: geo.geoParish, visible: true };
+  var entry = { rec: rec, marker: marker, lat: rec.lat, lon: rec.lon,
+                status: rec.geoStatus || 'ok', visible: true };
   markers.push(entry);
   marker.on('click', function() { openSidebar(entry); });
 }
@@ -437,25 +325,19 @@ function openSidebar(entry) {
   badge.textContent      = entry.rec.parish;
   badge.style.background = PARISH_COLOR[entry.rec.parish] || '#888';
 
-  var mismatch = entry.geoParish && entry.geoParish !== entry.rec.parish;
   var g = '<dt>Morada</dt><dd>' + entry.rec.address + '</dd>'
         + '<dt>Freguesia</dt><dd>' + entry.rec.parish + '</dd>'
         + '<dt>Coordenadas</dt><dd>' + entry.lat.toFixed(5) + '° N, '
-        + Math.abs(entry.lon).toFixed(5) + '° W</dd>'
-        + (entry.geoParish ? '<dt>Validação</dt><dd>' + entry.geoParish
-           + (mismatch ? ' ⚠️' : ' ✓') + '</dd>' : '');
+        + Math.abs(entry.lon).toFixed(5) + '° W</dd>';
   document.getElementById('s-info-grid').innerHTML = g;
 
   var statusEl = document.getElementById('s-geocode-status');
   if (entry.status === 'fallback') {
-    statusEl.innerHTML = '<span class="geocode-fail">⚠ Centróide da freguesia (morada não encontrada)</span>';
-  } else if (mismatch) {
-    statusEl.innerHTML = '<span class="geocode-warn">⚠ Geocodificação: ponto cai em <b>'
-      + entry.geoParish + '</b> (esperado: ' + entry.rec.parish + ')</span>';
+    statusEl.innerHTML = '<span class="geocode-fail">&#9888; Centróide da freguesia (morada não encontrada)</span>';
   } else if (entry.status === 'approx') {
-    statusEl.innerHTML = '<span class="geocode-approx">△ Posição aproximada</span>';
+    statusEl.innerHTML = '<span class="geocode-approx">&#9651; Posição aproximada</span>';
   } else {
-    statusEl.innerHTML = '<span class="geocode-ok">✓ Geocodificação exacta</span>';
+    statusEl.innerHTML = '<span class="geocode-ok">&#10003; Geocodificação exacta</span>';
   }
 
   map.panTo([entry.lat, entry.lon], { animate: true });
@@ -526,9 +408,11 @@ function updateCounts() {
 }
 
 // ─── PARISH BOUNDARIES via geoapi.pt ─────────────────────────────────────────
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
 async function fetchBoundaries() {
   var btn = document.getElementById('toggle-boundaries');
-  btn.textContent = '⏳ A carregar…';
+  btn.textContent = '&#9203; A carregar…';
   var total = SUBPARISHES.length;
   var done  = 0;
 
@@ -545,10 +429,7 @@ async function fetchBoundaries() {
       if (!data.geojson) { done++; continue; }
 
       var layer = L.geoJSON(data.geojson, {
-        style: {
-          color: color, weight: 2, opacity: 0.85,
-          fillColor: color, fillOpacity: 0.12
-        }
+        style: { color: color, weight: 2, opacity: 0.85, fillColor: color, fillOpacity: 0.12 }
       });
       layer.bindTooltip(
         '<b>' + data.nome + '</b><br><small style="opacity:.7">' + group + '</small>',
@@ -557,12 +438,12 @@ async function fetchBoundaries() {
       layer.addTo(map);
       boundaryLayers.push(layer);
       done++;
-      btn.textContent = '⏳ ' + done + '/' + total;
+      btn.textContent = '&#9203; ' + done + '/' + total;
     } catch(e) { done++; }
     await sleep(300);
   }
 
-  btn.textContent = '📍 Limites ✓';
+  btn.textContent = '&#128205; Limites &#10003;';
   btn.classList.add('active');
 }
 
@@ -570,7 +451,7 @@ function toggleBoundaries() {
   if (!boundariesOn) {
     boundariesOn = true;
     fetchBoundaries().catch(function() {
-      document.getElementById('toggle-boundaries').textContent = '📍 Limites (erro)';
+      document.getElementById('toggle-boundaries').textContent = '&#128205; Limites (erro)';
       boundariesOn = false;
     });
   } else {
@@ -578,38 +459,16 @@ function toggleBoundaries() {
     boundaryLayers = [];
     boundariesOn   = false;
     var btn = document.getElementById('toggle-boundaries');
-    btn.textContent = '📍 Limites';
+    btn.textContent = '&#128205; Limites';
     btn.classList.remove('active');
   }
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function initMap() {
-  var toGeocode = [];
-  var cache = loadCache();
-
-  ADDRESSES.forEach(function(rec) {
-    if (rec.lat !== undefined && rec.lon !== undefined) {
-      // Pre-geocoded from geoapi.pt national address database
-      addMarker(rec, { lat: rec.lat, lon: rec.lon, status: rec.geoStatus || 'ok',
-                       display: rec.address, geoParish: null });
-    } else {
-      // Check localStorage cache first
-      var key = rec.name + '||' + rec.address;
-      if (cache[key]) {
-        addMarker(rec, cache[key]);
-      } else {
-        toGeocode.push(rec);
-      }
-    }
-  });
-
+  ADDRESSES.forEach(function(rec) { addMarker(rec); });
   updateCounts();
   applyFilters();
-
-  if (toGeocode.length > 0) {
-    geocodeBackground(toGeocode);
-  }
 }
 
 initMap();
