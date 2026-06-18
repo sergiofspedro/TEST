@@ -128,14 +128,26 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   <div id="map">
     <div id="legend">
       <b>Freguesia</b>
-      <div class="leg-row" id="leg-sdh"  onclick="toggleFilter('Senhora da Hora')">
-        <div class="leg-dot" style="background:#E63946;"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
-      <div class="leg-row" id="leg-mat"  onclick="toggleFilter('Matosinhos')">
-        <div class="leg-dot" style="background:#457B9D;"></div> Matosinhos <span id="cnt-mat"></span></div>
-      <div class="leg-row" id="leg-leca" onclick="toggleFilter('Leça do Balio')">
-        <div class="leg-dot" style="background:#2A9D8F;"></div> Leça do Balio <span id="cnt-leca"></span></div>
-      <div class="leg-row" id="leg-pera" onclick="toggleFilter('Perafita')">
-        <div class="leg-dot" style="background:#F4A261;"></div> Perafita <span id="cnt-pera"></span></div>
+      <div class="leg-row" data-parish="Senhora da Hora" onclick="toggleFilter('Senhora da Hora')">
+        <div class="leg-dot" style="background:#FF595E"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
+      <div class="leg-row" data-parish="Custóias" onclick="toggleFilter('Custóias')">
+        <div class="leg-dot" style="background:#FF924C"></div> Custóias</div>
+      <div class="leg-row" data-parish="Guifões" onclick="toggleFilter('Guifões')">
+        <div class="leg-dot" style="background:#FFCA3A"></div> Guifões</div>
+      <div class="leg-row" data-parish="Leça do Balio" onclick="toggleFilter('Leça do Balio')">
+        <div class="leg-dot" style="background:#8AC926"></div> Leça do Balio <span id="cnt-leca"></span></div>
+      <div class="leg-row" data-parish="Matosinhos" onclick="toggleFilter('Matosinhos')">
+        <div class="leg-dot" style="background:#1982C4"></div> Matosinhos <span id="cnt-mat"></span></div>
+      <div class="leg-row" data-parish="Leça da Palmeira" onclick="toggleFilter('Leça da Palmeira')">
+        <div class="leg-dot" style="background:#6A4C93"></div> Leça da Palmeira</div>
+      <div class="leg-row" data-parish="São Mamede de Infesta" onclick="toggleFilter('São Mamede de Infesta')">
+        <div class="leg-dot" style="background:#4CC9F0"></div> São Mamede de Infesta</div>
+      <div class="leg-row" data-parish="Perafita" onclick="toggleFilter('Perafita')">
+        <div class="leg-dot" style="background:#F28482"></div> Perafita <span id="cnt-pera"></span></div>
+      <div class="leg-row" data-parish="Lavra" onclick="toggleFilter('Lavra')">
+        <div class="leg-dot" style="background:#06D6A0"></div> Lavra</div>
+      <div class="leg-row" data-parish="Santa Cruz do Bispo" onclick="toggleFilter('Santa Cruz do Bispo')">
+        <div class="leg-dot" style="background:#FB5607"></div> Santa Cruz do Bispo</div>
     </div>
     <div id="no-results">Nenhum residente corresponde ao filtro.</div>
   </div>
@@ -221,32 +233,16 @@ var ADDRESSES = [
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 var PARISH_COLOR = {
-  'Senhora da Hora': '#E63946',
-  'Matosinhos':      '#457B9D',
-  'Leça do Balio':   '#2A9D8F',
-  'Perafita':        '#F4A261'
-};
-var LEGEND_IDS = {
-  'Senhora da Hora': 'leg-sdh', 'Matosinhos': 'leg-mat',
-  'Leça do Balio': 'leg-leca', 'Perafita': 'leg-pera'
-};
-var CNT_IDS = {
-  'Senhora da Hora': 'cnt-sdh', 'Matosinhos': 'cnt-mat',
-  'Leça do Balio': 'cnt-leca', 'Perafita': 'cnt-pera'
-};
-
-// 10 parishes of Matosinhos municipality → display color group
-var PARISH_GROUP = {
-  'custóias':              'Leça do Balio',
-  'guifões':               'Leça do Balio',
-  'leça do balio':         'Leça do Balio',
-  'matosinhos':            'Matosinhos',
-  'leça da palmeira':      'Matosinhos',
-  'são mamede de infesta': 'Matosinhos',
-  'perafita':              'Perafita',
-  'lavra':                 'Perafita',
-  'santa cruz do bispo':   'Perafita',
-  'senhora da hora':       'Senhora da Hora'
+  'senhora da hora':       '#FF595E',
+  'custóias':              '#FF924C',
+  'guifões':               '#FFCA3A',
+  'leça do balio':         '#8AC926',
+  'matosinhos':            '#1982C4',
+  'leça da palmeira':      '#6A4C93',
+  'são mamede de infesta': '#4CC9F0',
+  'perafita':              '#F28482',
+  'lavra':                 '#06D6A0',
+  'santa cruz do bispo':   '#FB5607',
 };
 
 // GeoJSON boundary polygons — injected at deploy time by GitHub Actions.
@@ -295,7 +291,7 @@ function makeIcon(color, selected, failed) {
 
 // ─── MARKERS ─────────────────────────────────────────────────────────────────
 function addMarker(rec) {
-  var color  = PARISH_COLOR[rec.parish] || '#aaa';
+  var color  = PARISH_COLOR[rec.parish.toLowerCase()] || '#aaa';
   var failed = (rec.geoStatus === 'fallback');
   var marker = L.marker([rec.lat, rec.lon], { icon: makeIcon(color, false, failed) })
     .addTo(map)
@@ -309,22 +305,23 @@ function addMarker(rec) {
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
 function openSidebar(entry) {
+  var pcolor = PARISH_COLOR[entry.rec.parish.toLowerCase()] || '#aaa';
   if (selectedMarker && selectedMarker !== entry) {
     var old = selectedMarker;
-    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish]||'#aaa', false, old.status==='fallback'));
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish.toLowerCase()]||'#aaa', false, old.status==='fallback'));
   }
   selectedMarker = entry;
-  entry.marker.setIcon(makeIcon(PARISH_COLOR[entry.rec.parish]||'#aaa', true, entry.status==='fallback'));
+  entry.marker.setIcon(makeIcon(pcolor, true, entry.status==='fallback'));
 
   document.getElementById('sidebar-placeholder').style.display = 'none';
   document.getElementById('sidebar-content').style.display     = 'flex';
-  document.getElementById('sidebar-header').style.borderBottom = '3px solid '+(PARISH_COLOR[entry.rec.parish]||'#aaa');
+  document.getElementById('sidebar-header').style.borderBottom = '3px solid ' + pcolor;
   document.getElementById('s-name').textContent       = entry.rec.name;
   document.getElementById('s-parish-sub').textContent = entry.rec.parish;
 
   var badge = document.getElementById('s-badge');
   badge.textContent      = entry.rec.parish;
-  badge.style.background = PARISH_COLOR[entry.rec.parish] || '#888';
+  badge.style.background = pcolor;
 
   var g = '<dt>Morada</dt><dd>' + entry.rec.address + '</dd>'
         + '<dt>Freguesia</dt><dd>' + entry.rec.parish + '</dd>'
@@ -350,7 +347,7 @@ function openSidebar(entry) {
 function closeSidebar() {
   if (selectedMarker) {
     var old = selectedMarker;
-    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish]||'#aaa', false, old.status==='fallback'));
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish.toLowerCase()]||'#aaa', false, old.status==='fallback'));
     selectedMarker = null;
   }
   document.getElementById('sidebar-content').style.display     = 'none';
@@ -378,8 +375,8 @@ function applyFilters() {
 
   if (selectedMarker && !selectedMarker.visible) closeSidebar();
 
-  Object.keys(LEGEND_IDS).forEach(function(p) {
-    document.getElementById(LEGEND_IDS[p]).classList.toggle('dim', !!parish && parish !== p);
+  document.querySelectorAll('#legend .leg-row').forEach(function(row) {
+    row.classList.toggle('dim', !!parish && row.dataset.parish !== parish);
   });
 }
 
@@ -402,31 +399,33 @@ document.getElementById('filter-parish').addEventListener('change', function() {
 });
 
 function updateCounts() {
-  var counts = {};
-  Object.keys(CNT_IDS).forEach(function(p) { counts[p] = 0; });
-  markers.forEach(function(e) { if (counts[e.rec.parish] !== undefined) counts[e.rec.parish]++; });
-  Object.keys(CNT_IDS).forEach(function(p) {
-    var el = document.getElementById(CNT_IDS[p]);
+  var cnt_ids = {
+    'senhora da hora': 'cnt-sdh', 'matosinhos': 'cnt-mat',
+    'leça do balio': 'cnt-leca', 'perafita': 'cnt-pera'
+  };
+  var counts = { 'senhora da hora': 0, 'matosinhos': 0, 'leça do balio': 0, 'perafita': 0 };
+  markers.forEach(function(e) {
+    var key = e.rec.parish.toLowerCase();
+    if (counts[key] !== undefined) counts[key]++;
+  });
+  Object.keys(cnt_ids).forEach(function(p) {
+    var el = document.getElementById(cnt_ids[p]);
     if (el) el.textContent = counts[p] ? ' (' + counts[p] + ')' : '';
   });
 }
 
 // ─── PARISH BOUNDARIES (pre-embedded GeoJSON, injected at deploy time) ────────
 function drawBoundaries() {
-  Object.keys(PARISH_GROUP).forEach(function(name) {
+  Object.keys(BOUNDARY_GEOJSON).forEach(function(name) {
     var gj = BOUNDARY_GEOJSON[name];
     if (!gj) return;
-    var group = PARISH_GROUP[name];
-    var color = PARISH_COLOR[group] || '#888';
+    var color = PARISH_COLOR[name] || '#888';
     var layer = L.geoJSON(gj, {
       style: { color: color, weight: 2.5, opacity: 0.9,
                fillColor: color, fillOpacity: 0.22 }
     });
     var label = (gj.properties && gj.properties.nome) ? gj.properties.nome : name;
-    layer.bindTooltip(
-      '<b>' + label + '</b><br><small style="opacity:.7">' + group + '</small>',
-      { sticky: true }
-    );
+    layer.bindTooltip('<b>' + label + '</b>', { sticky: true });
     layer.addTo(map);
     boundaryLayers.push(layer);
   });
