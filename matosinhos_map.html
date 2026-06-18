@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOVESIT – Mapa Matosinhos</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/osmtogeojson@3.0.0-beta.4/osmtogeojson.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
+
+#topbar {
+  background: #16213e; color: #e0e0e0; padding: 10px 16px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 1000;
+}
+#topbar h1 { font-size: 15px; font-weight: bold; white-space: nowrap; color: #ffffff; }
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-group label { font-size: 12px; opacity: 0.75; white-space: nowrap; }
+#topbar select {
+  font-size: 12px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px; background: rgba(255,255,255,0.1); color: #e0e0e0; cursor: pointer; outline: none;
+}
+#topbar select option { color: #222; background: white; }
+#topbar input[type=text] {
+  font-size: 12px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px; background: rgba(255,255,255,0.1); color: #e0e0e0; width: 170px; outline: none;
+}
+#topbar input::placeholder { color: rgba(255,255,255,0.4); }
+#match-count { font-size: 12px; opacity: 0.65; white-space: nowrap; }
+#clear-btn {
+  margin-left: auto; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.25); color: #e0e0e0;
+  padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+#clear-btn:hover { background: rgba(255,255,255,0.2); }
+#toggle-boundaries {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-boundaries.active { background: rgba(100,200,150,0.3); border-color: rgba(100,200,150,0.6); }
+
+#main { display: flex; flex: 1; overflow: hidden; }
+#map  { flex: 1; z-index: 1; }
+
+#sidebar {
+  width: 340px; min-width: 340px; background: #1a1a2e; color: #e0e0e0;
+  overflow-y: auto; box-shadow: -3px 0 12px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; z-index: 2;
+}
+#sidebar-placeholder {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 32px 20px; text-align: center; color: #555;
+}
+#sidebar-placeholder svg { margin-bottom: 14px; }
+#sidebar-placeholder p { font-size: 13px; line-height: 1.6; }
+#sidebar-content { display: none; flex-direction: column; flex: 1; }
+#sidebar-header {
+  padding: 14px 16px 12px; position: sticky; top: 0; z-index: 10; position: relative;
+}
+#sidebar-header h2 { font-size: 16px; margin-bottom: 2px; color: #fff; }
+#sidebar-header .sub { font-size: 12px; opacity: 0.65; }
+#sidebar-close {
+  position: absolute; top: 10px; right: 12px;
+  background: rgba(255,255,255,0.1); border: none; color: #e0e0e0;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  font-size: 14px; line-height: 26px; text-align: center;
+}
+#sidebar-close:hover { background: rgba(255,255,255,0.25); }
+#sidebar-body { padding: 12px 14px; flex: 1; }
+.parish-badge {
+  display: inline-block; padding: 3px 12px; border-radius: 12px;
+  font-size: 11px; font-weight: bold; color: white; margin-bottom: 12px;
+}
+.info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 0; border-top: 1px solid #2a2a4a; }
+.info-grid dt {
+  background: #0f0f23; font-size: 11px; font-weight: bold; color: #aaa;
+  padding: 7px 10px; border-bottom: 1px solid #2a2a4a;
+}
+.info-grid dd { font-size: 12px; color: #ddd; padding: 7px 10px; border-bottom: 1px solid #2a2a4a; word-break: break-word; }
+.geocode-status { font-size: 11px; margin-top: 8px; }
+.geocode-ok   { color: #4caf50; }
+.geocode-fail { color: #f44336; }
+.geocode-approx { color: #ff9800; }
+
+#legend {
+  position: absolute; bottom: 30px; left: 16px; z-index: 500;
+  background: rgba(22,33,62,0.95); padding: 10px 14px; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-size: 12px; color: #e0e0e0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+#legend b { display: block; margin-bottom: 8px; color: #fff; font-size: 12px; }
+.leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; }
+.leg-row:hover { opacity: 0.75; }
+.leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
+.leg-row.dim { opacity: 0.35; }
+
+#progress-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;
+  background: rgba(10,10,20,0.88); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; color: #e0e0e0;
+}
+#progress-overlay h3 { font-size: 16px; margin-bottom: 10px; }
+#progress-bar-wrap {
+  width: 340px; height: 10px; background: rgba(255,255,255,0.15);
+  border-radius: 5px; overflow: hidden; margin-bottom: 10px;
+}
+#progress-bar { height: 100%; background: #4caf50; border-radius: 5px; width: 0%; transition: width 0.3s; }
+#progress-text { font-size: 13px; opacity: 0.75; }
+#progress-detail { font-size: 11px; opacity: 0.5; margin-top: 6px; max-width: 400px; text-align: center; }
+#skip-geocode {
+  margin-top: 18px; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3); color: #e0e0e0;
+  padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+}
+#skip-geocode:hover { background: rgba(255,255,255,0.2); }
+
+#no-results {
+  display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); background: rgba(22,33,62,0.95);
+  padding: 16px 24px; border-radius: 8px; font-size: 14px; color: #aaa;
+  z-index: 400; text-align: center; border: 1px solid rgba(255,255,255,0.1);
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>&#128506; MOVESIT – Residentes Matosinhos</h1>
+  <div class="filter-group"><label>&#128269; Nome</label>
+    <input type="text" id="search-input" placeholder="pesquisar nome…"></div>
+  <div class="filter-group"><label>Freguesia</label>
+    <select id="filter-parish">
+      <option value="">Todas</option>
+      <option value="Senhora da Hora">Senhora da Hora</option>
+      <option value="Matosinhos">Matosinhos</option>
+      <option value="Leça do Balio">Leça do Balio</option>
+      <option value="Perafita">Perafita</option>
+    </select></div>
+  <button id="toggle-boundaries" onclick="toggleBoundaries()">&#128205; Limites</button>
+  <span id="match-count"></span>
+  <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
+</div>
+
+<div id="main">
+  <div id="map">
+    <div id="progress-overlay">
+      <h3>&#128506; A geocodificar moradas…</h3>
+      <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+      <div id="progress-text">0 / 0</div>
+      <div id="progress-detail"></div>
+      <button id="skip-geocode" onclick="skipGeocoding()">Mostrar mapa sem coordenadas exactas</button>
+    </div>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-placeholder">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">
+        <circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+      </svg>
+      <p>Clique num marcador no mapa<br>para ver os detalhes.</p>
+    </div>
+    <div id="sidebar-content">
+      <div id="sidebar-header">
+        <h2 id="s-name"></h2>
+        <div class="sub" id="s-parish-sub"></div>
+        <button id="sidebar-close" onclick="closeSidebar()">&#10005;</button>
+      </div>
+      <div id="sidebar-body">
+        <span id="s-badge" class="parish-badge"></span>
+        <dl class="info-grid" id="s-info-grid"></dl>
+        <div class="geocode-status" id="s-geocode-status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="legend">
+  <b>Freguesia</b>
+  <div class="leg-row" id="leg-sdh"    onclick="toggleFilter('Senhora da Hora')">
+    <div class="leg-dot" style="background:#E63946;"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
+  <div class="leg-row" id="leg-mat"    onclick="toggleFilter('Matosinhos')">
+    <div class="leg-dot" style="background:#457B9D;"></div> Matosinhos <span id="cnt-mat"></span></div>
+  <div class="leg-row" id="leg-leca"   onclick="toggleFilter('Leça do Balio')">
+    <div class="leg-dot" style="background:#2A9D8F;"></div> Leça do Balio <span id="cnt-leca"></span></div>
+  <div class="leg-row" id="leg-pera"   onclick="toggleFilter('Perafita')">
+    <div class="leg-dot" style="background:#F4A261;"></div> Perafita <span id="cnt-pera"></span></div>
+</div>
+
+<div id="no-results">Nenhum residente corresponde ao filtro.</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+var ADDRESSES = [
+  {"name":"Ana Gabriela Velasquez de Azevedo e Silva","address":"R. da Quinta Seca 196, 2E","parish":"Senhora da Hora"},
+  {"name":"Anabela Alves Dias Pinto","address":"Rua Funde de Vila, 173 1 andar","parish":"Senhora da Hora"},
+  {"name":"Raquel Maria Oliveira Menezes","address":"Rua João H. Ulrich 232, 1ºesq 4460-333 Senhora da Hora","parish":"Senhora da Hora"},
+  {"name":"Carlos Manuel Morais Pinheiro da Costa","address":"Rua João Villaret, 103, 4460-336 Senhora da Hora","parish":"Senhora da Hora"},
+  {"name":"Marina Ferreira Borges","address":"Rua Augusto Lessa 473 RC DRT","parish":"Senhora da Hora"},
+  {"name":"Ana Luísa Cachinho Pereira Pinto","address":"Rua Companhia dos Caulinos 678 RC Dto","parish":"Senhora da Hora"},
+  {"name":"Maria João Monteiro Pereira Rebola","address":"Rua das Andorinhas, 50 Senhora da Hora","parish":"Senhora da Hora"},
+  {"name":"Carlos Miguel Santos Oliveira","address":"Rua Quinta do Viso 156, Entrada 5, 1ºD","parish":"Senhora da Hora"},
+  {"name":"Gabriela Filipa Bastião Saraiva","address":"Av. Vasco da Gama, 931 4460-435 Senhora da Hora","parish":"Senhora da Hora"},
+  {"name":"Agostinho Olindo Neto Ferreira","address":"Rua Florbela Espanca Ent 100, 3º esq.","parish":"Matosinhos"},
+  {"name":"Juliana Zmetáková","address":"Rua Conde Alto Mearim 1396 4 tras., 4450-031, Matosinhos","parish":"Matosinhos"},
+  {"name":"Carlos Martinho Conceição Aleixo","address":"Bairro de Carcavelos, bloco 1 b, casa 4","parish":"Matosinhos"},
+  {"name":"Carlos Manuel de Sousa Carvalho","address":"Rua 25 de abril 37 2 esquerdo 4450-304","parish":"Matosinhos"},
+  {"name":"Isabel Maria Carneiro Santos Silva Marques","address":"Rua Real de baixo, 285 r/chão trás","parish":"Matosinhos"},
+  {"name":"Sara Manuela Correia","address":"Rua Raúl Brandão, entrada 67, casa 6","parish":"Matosinhos"},
+  {"name":"Catarina da Costa Moura","address":"Rua Goa 9, 2º Esquerdo","parish":"Matosinhos"},
+  {"name":"Cláudia Manuela Fernandes Silveira Viana","address":"Rua de S.Roque, 150 4450-245 Matosinhos","parish":"Matosinhos"},
+  {"name":"Ricardo Rosa","address":"Rua José Joaquim Gomes da Silva, 55, 5Esq, 4450-171 Matosinhos","parish":"Matosinhos"},
+  {"name":"Cármen de Jesus Barbosa Dantes Moreira","address":"Rua Padre José Pacheco de Monte 371 r/ch","parish":"Matosinhos"},
+  {"name":"Eufrosina Rosa M Vieira Sousa","address":"Avenida Dr Germano Vieira 1048 4 frente Guinfães Maia","parish":"Matosinhos"},
+  {"name":"Sónia Marlene Pereira Galego","address":"Rua de Manhufe n54 traseiras 4450-180","parish":"Matosinhos"},
+  {"name":"Gonçalo Lopes Cruz","address":"Rua Aquilino Ribeiro nº944 Famões","parish":"Matosinhos"},
+  {"name":"Carla Filipa Alcobia Pires","address":"Rua do Mar Apertado 11 Matosinhos","parish":"Matosinhos"},
+  {"name":"Clara Alexandra Geraldes Fernandes","address":"Avenida Serpa Pinto, número 712- 6 esquerdo 4450-279 Matosinhos","parish":"Matosinhos"},
+  {"name":"Margarida Alexandra de Almeida Santos","address":"Rua dos Pescadores, 344","parish":"Matosinhos"},
+  {"name":"Marta Duarte Lameirão","address":"Rua Salgueiro Maia, 145, 3º Dt 4460-802","parish":"Leça do Balio"},
+  {"name":"Admilo Ribeiro","address":"Rua Alves Redol 66","parish":"Leça do Balio"},
+  {"name":"Marlene Isabel Lopes Valeixo","address":"Rua Elaine Sanceau nr 234 3 esq. traseira","parish":"Leça do Balio"},
+  {"name":"Matilde Caria Seidedos Secca de Oliveira","address":"Rua Mainça 237, Leça do Balio","parish":"Leça do Balio"},
+  {"name":"Thayna Bustamante de Oliveira","address":"Rua Comandante Quelhas Lima, 84, 2 esquerdo","parish":"Leça do Balio"},
+  {"name":"Sónia Cunha","address":"R de Picoutos 163","parish":"Leça do Balio"},
+  {"name":"Maria Luísa Lima Santos","address":"Rua Sousa Prata, 130","parish":"Leça do Balio"},
+  {"name":"Beatriz Lopo Teixeira","address":"Rua António Barbosa da Silva, 145 Cidade da Maia 4470-031- Maia","parish":"Leça do Balio"},
+  {"name":"Francisca Vieira Abrunhosa Branco","address":"Estrada da Circunvalação 10327 R/C, 4250-151 Porto","parish":"Leça do Balio"},
+  {"name":"Raphael","address":"Travessa Canto 17 4465-052","parish":"Leça do Balio"},
+  {"name":"Claudia Alemão","address":"Rua Monte do Vale 20 Leça do Balio","parish":"Leça do Balio"},
+  {"name":"Juliana Mafalda Polido Monteiro","address":"Praceta Ponte da Pedra 66 hab 11","parish":"Leça do Balio"},
+  {"name":"José Joaquim Pereira de Freitas","address":"Rua António Fragoso 328 4460-669 Custóias","parish":"Leça do Balio"},
+  {"name":"Helder Miguel Maia Oliveira","address":"Alameda das Ribeiras nº89 2 esq. 4455-578 Perafita","parish":"Perafita"},
+  {"name":"Solange Catarina da Silva Cunha","address":"Travessa Ramalho Ortigão entrada 103 3ºdireito","parish":"Perafita"},
+  {"name":"Bárbara Dos Santos Duarte","address":"Rua Nicolau Tolentino, nº44 CP-4455-555","parish":"Perafita"},
+  {"name":"Inês Fernanda Maia Pereira","address":"Rua Silva Aroso, 962","parish":"Perafita"},
+  {"name":"Bárbara Raquel Dias Alves","address":"Travessa Ramalho Ortigão 119 1 Esquerdo","parish":"Perafita"},
+  {"name":"Filipa de Jesus Pereira","address":"Rua Ramalho Ortigão 15 4455-537 Perafita","parish":"Perafita"},
+  {"name":"Fernando Marantes Ribeiro","address":"Rua França Junior 692 Matosinhos","parish":"Perafita"},
+  {"name":"Mafalda Daniela Fonseca da Silva Santos","address":"Travessa da Agra, 267-3ºB, 4450-599 Matosinhos","parish":"Perafita"},
+  {"name":"Anabela Abreu Ferreira Grilo","address":"Rua de Antão Gonçalves, 185 4455 Lavra","parish":"Perafita"},
+  {"name":"Diana Marisa Dias","address":"Rua de Almeiriga Norte 2694 4455-418 Perafita","parish":"Perafita"},
+  {"name":"Delfim Leite da Silva","address":"Av. Dr. Fernando Aroso","parish":"Perafita"},
+  {"name":"Maria Aragão","address":"Rua Doutor Afonso Cordeiro, 899- 1 FTE., 4470-007 Matosinhos","parish":"Perafita"},
+  {"name":"Elisangela de Fatima Pereira e Costa","address":"Rua Dom Armindo Lopes Coelho, nº33, apart. 03 Maia","parish":"Perafita"},
+  {"name":"Guilherme Rodrigo de Oliveira Campos Costa Couto","address":"Rua Almeiriga Norte 2088, Perafita","parish":"Perafita"},
+  {"name":"Alexandra Sampaio","address":"Avenida das Ribeiras 875 2ºEsq","parish":"Perafita"}
+];
+
+// Filter out placeholder addresses
+ADDRESSES = ADDRESSES.filter(function(a) { return a.address && a.address !== '-'; });
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+var PARISH_COLOR = {
+  'Senhora da Hora': '#E63946',
+  'Matosinhos':      '#457B9D',
+  'Leça do Balio':   '#2A9D8F',
+  'Perafita':        '#F4A261'
+};
+var LEGEND_IDS = {
+  'Senhora da Hora': 'leg-sdh',
+  'Matosinhos':      'leg-mat',
+  'Leça do Balio':   'leg-leca',
+  'Perafita':        'leg-pera'
+};
+var CNT_IDS = {
+  'Senhora da Hora': 'cnt-sdh',
+  'Matosinhos':      'cnt-mat',
+  'Leça do Balio':   'cnt-leca',
+  'Perafita':        'cnt-pera'
+};
+
+// OSM parish names → Excel tab names
+var OSM_TO_PARISH = {
+  'Senhora da Hora': 'Senhora da Hora',
+  'Custóias, Leça do Balio e Guifões': 'Leça do Balio',
+  'Matosinhos e Leça da Palmeira': 'Matosinhos',
+  'Perafita, Lavra e Santa Cruz do Bispo': 'Perafita',
+  'Custodias, Leça do Balio e Guifões': 'Leça do Balio',
+  'Custoias, Leca do Balio e Guifoes': 'Leça do Balio'
+};
+
+var NOMINATIM = 'https://nominatim.openstreetmap.org';
+var OVERPASS  = 'https://overpass-api.de/api/interpreter';
+var CACHE_KEY = 'movesit_geocode_v2';
+
+// ─── MAP ─────────────────────────────────────────────────────────────────────
+var map = L.map('map', { center: [41.185, -8.69], zoom: 13 });
+
+var satellite = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles &copy; Esri', maxZoom: 19, opacity: 1 }
+).addTo(map);
+
+var streets = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
+);
+
+L.control.layers(
+  { 'Satélite (ESRI)': satellite, 'Mapa (OSM)': streets },
+  {}, { position: 'topright' }
+).addTo(map);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var markers        = [];     // {rec, marker, lat, lon, status}
+var boundaryLayers = {};     // parish → L.GeoJSON
+var boundariesOn   = false;
+var selectedMarker = null;
+var activeFilter   = null;
+var abortGeocoding = false;
+
+// ─── ICONS ───────────────────────────────────────────────────────────────────
+function makeIcon(color, selected, failed) {
+  var size = selected ? 20 : 14;
+  var sw   = selected ? 2.5 : 1.5;
+  var inner = failed
+    ? '<line x1="7" y1="5" x2="13" y2="11" stroke="white" stroke-width="1.5"/><line x1="13" y1="5" x2="7" y2="11" stroke="white" stroke-width="1.5"/>'
+    : '<circle cx="10" cy="8" r="3.5" fill="white" opacity="0.85"/>';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+(size*2)+'" height="'+(size*2.4)+'" viewBox="0 0 20 24">'
+          + '<path d="M10 0C5.8 0 2 3.8 2 8c0 6 8 16 8 16s8-10 8-16c0-4.2-3.8-8-8-8z"'
+          + ' fill="'+ (failed ? '#888' : color)+'" stroke="white" stroke-width="'+sw+'"/>'
+          + inner + '</svg>';
+  return L.divIcon({ html: svg, iconSize: [size*2, size*2.4],
+                     iconAnchor: [size, size*2.4], popupAnchor: [0, -(size*2)], className: '' });
+}
+
+// ─── GEOCODING ───────────────────────────────────────────────────────────────
+function loadCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveCache(c) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch(e) {}
+}
+
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+var PARISH_FALLBACK = {
+  'Senhora da Hora': [41.1867, -8.6528],
+  'Matosinhos':      [41.1833, -8.6833],
+  'Leça do Balio':   [41.2000, -8.6300],
+  'Perafita':        [41.2167, -8.7000]
+};
+
+async function geocodeOne(rec, cache) {
+  var key = rec.name + '||' + rec.address;
+  if (cache[key]) return cache[key];
+
+  var parish = rec.parish;
+  var queries = [
+    rec.address + ', ' + parish + ', Matosinhos, Portugal',
+    rec.address + ', Matosinhos, Portugal',
+    rec.address + ', Portugal'
+  ];
+
+  for (var i = 0; i < queries.length; i++) {
+    try {
+      var url = NOMINATIM + '/search?format=json&limit=1&countrycodes=pt'
+              + '&q=' + encodeURIComponent(queries[i]);
+      var resp = await fetch(url, { headers: { 'User-Agent': 'MOVESIT-Matosinhos/1.0' } });
+      if (!resp.ok) { await sleep(2000); continue; }
+      var data = await resp.json();
+      if (data && data.length > 0) {
+        var res = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon),
+                    display: data[0].display_name, status: i === 0 ? 'ok' : 'approx' };
+        cache[key] = res;
+        saveCache(cache);
+        return res;
+      }
+    } catch(e) { /* network error */ }
+    await sleep(1100);
+  }
+
+  // Fallback: parish centroid
+  var fb = PARISH_FALLBACK[parish] || [41.185, -8.69];
+  var res = { lat: fb[0], lon: fb[1], display: parish + ' (centróide)', status: 'fallback' };
+  cache[key] = res;
+  saveCache(cache);
+  return res;
+}
+
+function skipGeocoding() {
+  abortGeocoding = true;
+}
+
+async function geocodeAll() {
+  var cache   = loadCache();
+  var overlay = document.getElementById('progress-overlay');
+  var bar     = document.getElementById('progress-bar');
+  var txt     = document.getElementById('progress-text');
+  var detail  = document.getElementById('progress-detail');
+  var n = ADDRESSES.length;
+
+  for (var i = 0; i < n; i++) {
+    if (abortGeocoding) break;
+    var rec = ADDRESSES[i];
+    txt.textContent    = (i+1) + ' / ' + n;
+    detail.textContent = rec.name + ' — ' + rec.address;
+    bar.style.width    = ((i+1)/n*100) + '%';
+
+    var geo = await geocodeOne(rec, cache);
+    addMarker(rec, geo);
+    updateCounts();
+    if (geo.status !== 'fallback') await sleep(1100);
+  }
+
+  overlay.style.display = 'none';
+  updateCounts();
+  applyFilters();
+}
+
+// ─── MARKERS ─────────────────────────────────────────────────────────────────
+function addMarker(rec, geo) {
+  var color  = PARISH_COLOR[rec.parish] || '#aaa';
+  var failed = (geo.status === 'fallback');
+  var marker = L.marker([geo.lat, geo.lon], { icon: makeIcon(color, false, failed) })
+    .addTo(map)
+    .bindTooltip(rec.name, { permanent: false, direction: 'top',
+                              className: 'leaflet-tooltip-dark' });
+
+  var entry = { rec: rec, marker: marker, lat: geo.lat, lon: geo.lon,
+                status: geo.status, display: geo.display, visible: true };
+  markers.push(entry);
+
+  marker.on('click', function() { openSidebar(entry); });
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+function openSidebar(entry) {
+  if (selectedMarker && selectedMarker !== entry) {
+    var old = selectedMarker;
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish] || '#aaa', false, old.status === 'fallback'));
+  }
+  selectedMarker = entry;
+  entry.marker.setIcon(makeIcon(PARISH_COLOR[entry.rec.parish] || '#aaa', true, entry.status === 'fallback'));
+
+  document.getElementById('sidebar-placeholder').style.display  = 'none';
+  document.getElementById('sidebar-content').style.display      = 'flex';
+
+  document.getElementById('sidebar-header').style.borderBottom = '3px solid ' + (PARISH_COLOR[entry.rec.parish] || '#aaa');
+  document.getElementById('s-name').textContent       = entry.rec.name;
+  document.getElementById('s-parish-sub').textContent = entry.rec.parish;
+
+  var badge = document.getElementById('s-badge');
+  badge.textContent   = entry.rec.parish;
+  badge.style.background = PARISH_COLOR[entry.rec.parish] || '#888';
+
+  var g = '<dt>Morada</dt><dd>' + entry.rec.address + '</dd>'
+        + '<dt>Freguesia</dt><dd>' + entry.rec.parish + '</dd>'
+        + '<dt>Coordenadas</dt><dd>' + entry.lat.toFixed(5) + '° N, '
+        + Math.abs(entry.lon).toFixed(5) + '° W</dd>'
+        + '<dt>Fonte coord.</dt><dd>' + (entry.display || '—') + '</dd>';
+  document.getElementById('s-info-grid').innerHTML = g;
+
+  var statusEl = document.getElementById('s-geocode-status');
+  if (entry.status === 'ok') {
+    statusEl.innerHTML = '<span class="geocode-ok">&#10003; Geocodificação exacta</span>';
+  } else if (entry.status === 'approx') {
+    statusEl.innerHTML = '<span class="geocode-approx">&#9651; Posição aproximada</span>';
+  } else {
+    statusEl.innerHTML = '<span class="geocode-fail">&#9888; Centróide da freguesia (morada não encontrada)</span>';
+  }
+
+  map.panTo([entry.lat, entry.lon], { animate: true });
+}
+
+function closeSidebar() {
+  if (selectedMarker) {
+    var old = selectedMarker;
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish] || '#aaa', false, old.status === 'fallback'));
+    selectedMarker = null;
+  }
+  document.getElementById('sidebar-content').style.display      = 'none';
+  document.getElementById('sidebar-placeholder').style.display  = 'flex';
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────────
+function applyFilters() {
+  var search = document.getElementById('search-input').value.trim().toLowerCase();
+  var parish = document.getElementById('filter-parish').value;
+  if (activeFilter) parish = activeFilter;
+  var visible = 0;
+
+  markers.forEach(function(entry) {
+    var ok = (!search || entry.rec.name.toLowerCase().indexOf(search) >= 0)
+          && (!parish || entry.rec.parish === parish);
+    if (ok) {
+      if (!map.hasLayer(entry.marker)) entry.marker.addTo(map);
+      visible++;
+    } else {
+      if (map.hasLayer(entry.marker)) map.removeLayer(entry.marker);
+    }
+    entry.visible = ok;
+  });
+
+  document.getElementById('match-count').textContent =
+    markers.length > 0 ? visible + ' / ' + markers.length + ' residentes' : '';
+  document.getElementById('no-results').style.display = (markers.length > 0 && visible === 0) ? 'block' : 'none';
+
+  if (selectedMarker && !selectedMarker.visible) closeSidebar();
+
+  // dim legend rows
+  Object.keys(LEGEND_IDS).forEach(function(p) {
+    var el = document.getElementById(LEGEND_IDS[p]);
+    el.classList.toggle('dim', !!parish && parish !== p);
+  });
+}
+
+function clearAll() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-parish').value = '';
+  activeFilter = null;
+  applyFilters();
+}
+
+function toggleFilter(parish) {
+  if (activeFilter === parish) {
+    activeFilter = null;
+    document.getElementById('filter-parish').value = '';
+  } else {
+    activeFilter = parish;
+    document.getElementById('filter-parish').value = parish;
+  }
+  applyFilters();
+}
+
+document.getElementById('search-input').addEventListener('input',   applyFilters);
+document.getElementById('filter-parish').addEventListener('change', function() {
+  activeFilter = null; applyFilters();
+});
+
+function updateCounts() {
+  var counts = { 'Senhora da Hora': 0, 'Matosinhos': 0, 'Leça do Balio': 0, 'Perafita': 0 };
+  markers.forEach(function(e) { if (counts[e.rec.parish] !== undefined) counts[e.rec.parish]++; });
+  Object.keys(CNT_IDS).forEach(function(p) {
+    var el = document.getElementById(CNT_IDS[p]);
+    if (el) el.textContent = counts[p] ? ' (' + counts[p] + ')' : '';
+  });
+}
+
+// ─── PARISH BOUNDARIES ───────────────────────────────────────────────────────
+function toggleBoundaries() {
+  var btn = document.getElementById('toggle-boundaries');
+  if (!boundariesOn) {
+    btn.classList.add('active');
+    btn.textContent = '⏳ A carregar…';
+    fetchBoundaries().then(function() {
+      btn.textContent = '📍 Limites ✓';
+    }).catch(function() {
+      btn.textContent = '📍 Limites';
+      btn.classList.remove('active');
+    });
+    boundariesOn = true;
+  } else {
+    Object.keys(boundaryLayers).forEach(function(p) {
+      if (boundaryLayers[p] && map.hasLayer(boundaryLayers[p]))
+        map.removeLayer(boundaryLayers[p]);
+    });
+    btn.classList.remove('active');
+    btn.textContent = '📍 Limites';
+    boundariesOn = false;
+  }
+}
+
+async function fetchBoundaries() {
+  var query = `[out:json][timeout:30];
+area["name"="Matosinhos"]["admin_level"="7"]->.mun;
+(
+  relation["boundary"="administrative"]["admin_level"="8"](area.mun);
+);
+(._;>;);
+out body;`;
+
+  var url = OVERPASS + '?data=' + encodeURIComponent(query);
+  var resp = await fetch(url);
+  if (!resp.ok) throw new Error('Overpass error');
+  var data = await resp.json();
+
+  if (typeof osmtogeojson === 'undefined') throw new Error('osmtogeojson not loaded');
+  var geojson = osmtogeojson(data);
+
+  geojson.features.forEach(function(feat) {
+    var osmName = (feat.properties && (feat.properties.name || feat.properties.local_name)) || '';
+    var parish  = OSM_TO_PARISH[osmName] || osmName;
+    var color   = PARISH_COLOR[parish] || '#888';
+
+    var layer = L.geoJSON(feat, {
+      style: { color: color, weight: 2.5, opacity: 0.9, fillColor: color, fillOpacity: 0.07 }
+    });
+    layer.bindTooltip(osmName, { sticky: true, className: 'leaflet-tooltip-dark' });
+    layer.addTo(map);
+    boundaryLayers[parish] = layer;
+  });
+
+  document.getElementById('toggle-boundaries').textContent = '📍 Limites ✓';
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+geocodeAll();
+</script>
+</body>
+</html>
