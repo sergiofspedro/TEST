@@ -72,6 +72,44 @@ jobs:
           print(f'Injected {len(results)}/10 parish boundaries into HTML', flush=True)
           PYEOF
 
+      - name: Embed BairrosDigitais GeoJSON
+        run: |
+          pip install geopandas --quiet
+          python3 - << 'PYEOF'
+          import geopandas as gpd, json, sys, subprocess
+
+          subprocess.run(['cp', '-r', 'Files SIG CMM', '/tmp/bairros.gdb'], check=True)
+
+          gdf = gpd.read_file('/tmp/bairros.gdb', layer='BairrosDigitais')
+          gdf = gdf.to_crs('EPSG:4326')
+
+          features = []
+          for _, row in gdf.iterrows():
+              name = row.get('Designação') or ''
+              freg = row.get('Freguesia') or ''
+              features.append({
+                  'type': 'Feature',
+                  'properties': {'designacao': name, 'freguesia': freg},
+                  'geometry': row['geometry'].__geo_interface__
+              })
+              print(f'✓ {name} ({freg})', flush=True)
+
+          if not features:
+              print('No bairros found — skipping', flush=True)
+              sys.exit(0)
+
+          geojson = {'type': 'FeatureCollection', 'features': features}
+          js_var = 'var BAIRROS_GEOJSON = ' + json.dumps(geojson, ensure_ascii=False) + ';'
+
+          with open('matosinhos_map.html', 'r', encoding='utf-8') as f:
+              html = f.read()
+          html = html.replace('var BAIRROS_GEOJSON = {};', js_var, 1)
+          with open('matosinhos_map.html', 'w', encoding='utf-8') as f:
+              f.write(html)
+
+          print(f'Injected {len(features)} bairros into HTML', flush=True)
+          PYEOF
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

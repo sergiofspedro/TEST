@@ -40,6 +40,11 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
 }
 #toggle-boundaries.active { background: rgba(100,200,150,0.3); border-color: rgba(100,200,150,0.6); }
+#toggle-bairros {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-bairros.active { background: rgba(245,197,24,0.25); border-color: rgba(245,197,24,0.6); }
 
 #main { display: flex; flex: 1; overflow: hidden; }
 #map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
@@ -120,6 +125,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
       <option value="Perafita">Perafita</option>
     </select></div>
   <button id="toggle-boundaries" onclick="toggleBoundaries()">&#128205; Limites</button>
+  <button id="toggle-bairros" onclick="toggleBairros()">&#127984; Bairros</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
 </div>
@@ -249,6 +255,9 @@ var PARISH_COLOR = {
 // var BOUNDARY_GEOJSON = { "senhora da hora": { GeoJSON Feature }, … };
 var BOUNDARY_GEOJSON = {};
 
+// GeoJSON bairros digitais — injected at deploy time by GitHub Actions.
+var BAIRROS_GEOJSON = {};
+
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
 
@@ -271,6 +280,8 @@ L.control.layers(
 var markers        = [];
 var boundaryLayers = [];
 var boundariesOn   = false;
+var bairrosLayer   = null;
+var bairrosOn      = false;
 var selectedMarker = null;
 var activeFilter   = null;
 
@@ -447,6 +458,38 @@ function toggleBoundaries() {
     boundaryLayers = [];
     boundariesOn   = false;
     btn.textContent = '&#128205; Limites';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── BAIRROS DIGITAIS ────────────────────────────────────────────────────────
+function drawBairros() {
+  if (!BAIRROS_GEOJSON.features || !BAIRROS_GEOJSON.features.length) return false;
+  bairrosLayer = L.geoJSON(BAIRROS_GEOJSON, {
+    style: { color: '#f5c518', weight: 2, opacity: 0.9, dashArray: '6 4',
+             fillColor: '#f5c518', fillOpacity: 0.12 },
+    onEachFeature: function(feat, layer) {
+      layer.bindTooltip(
+        '<b>' + (feat.properties.designacao || '') + '</b><br>'
+        + (feat.properties.freguesia || ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+
+function toggleBairros() {
+  var btn = document.getElementById('toggle-bairros');
+  if (!bairrosOn) {
+    if (!drawBairros()) { btn.textContent = '&#127984; Bairros (N/D)'; return; }
+    bairrosOn = true;
+    btn.textContent = '&#127984; Bairros &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (bairrosLayer) { map.removeLayer(bairrosLayer); bairrosLayer = null; }
+    bairrosOn = false;
+    btn.textContent = '&#127984; Bairros';
     btn.classList.remove('active');
   }
 }
