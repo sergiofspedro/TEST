@@ -65,6 +65,11 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
 }
 #toggle-areas-ajardinadas.active { background: rgba(45,106,79,0.35); border-color: rgba(45,106,79,0.7); }
+#toggle-zonas-vizinhanca {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-zonas-vizinhanca.active { background: rgba(230,126,34,0.3); border-color: rgba(230,126,34,0.65); }
 
 #main { display: flex; flex: 1; overflow: hidden; }
 #map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
@@ -150,6 +155,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   <button id="toggle-equipamentos" onclick="toggleEquipamentos()">&#127963; Equip.</button>
   <button id="toggle-associacoes" onclick="toggleAssociacoes()">&#129309; Assoc.</button>
   <button id="toggle-areas-ajardinadas" onclick="toggleAreasAjardinadas()">&#127795; Áreas Verdes</button>
+  <button id="toggle-zonas-vizinhanca" onclick="toggleZonasVizinhanca()">&#128679; Bairros (piloto)</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
 </div>
@@ -285,6 +291,7 @@ var HABITACAO_SOCIAL_GEOJSON = {};
 var EQUIPAMENTOS_GEOJSON = {};
 var ASSOCIACOES_GEOJSON = {};
 var AREAS_AJARDINADAS_GEOJSON = {};
+var ZONAS_VIZINHANCA_GEOJSON = {};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -318,6 +325,8 @@ var associacoesLayer  = null;
 var associacoesOn     = false;
 var areasAjardinadasLayer = null;
 var areasAjardinadasOn    = false;
+var zonasVizinhancaLayer = null;
+var zonasVizinhancaOn    = false;
 var selectedMarker = null;
 var activeFilter   = null;
 
@@ -661,6 +670,39 @@ function toggleAreasAjardinadas() {
     if (areasAjardinadasLayer) { map.removeLayer(areasAjardinadasLayer); areasAjardinadasLayer = null; }
     areasAjardinadasOn = false;
     btn.innerHTML = '&#127795; Áreas Verdes';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── ZONAS DE VIZINHANÇA (CMM pilot project "O meu bairro / A minha rua" — partial coverage) ──
+function drawZonasVizinhanca() {
+  if (!ZONAS_VIZINHANCA_GEOJSON.features || !ZONAS_VIZINHANCA_GEOJSON.features.length) return false;
+  zonasVizinhancaLayer = L.geoJSON(ZONAS_VIZINHANCA_GEOJSON, {
+    style: { color: '#e67e22', weight: 2, opacity: 0.9, dashArray: '3 3',
+             fillColor: '#e67e22', fillOpacity: 0.15 },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties || {};
+      var label = p.designacao || p.Designacao || p.DESIGNACAO || p.designação
+        || p.nome || p.Nome || p.NOME || p.descricao || p.Descricao || 'Zona de vizinhança';
+      layer.bindTooltip(
+        '<b>' + label + '</b><br><span style="opacity:.7">Projeto piloto — cobertura parcial</span>',
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleZonasVizinhanca() {
+  var btn = document.getElementById('toggle-zonas-vizinhanca');
+  if (!zonasVizinhancaOn) {
+    if (!drawZonasVizinhanca()) { btn.innerHTML = '&#128679; Bairros (piloto) (N/D)'; return; }
+    zonasVizinhancaOn = true;
+    btn.innerHTML = '&#128679; Bairros (piloto) &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (zonasVizinhancaLayer) { map.removeLayer(zonasVizinhancaLayer); zonasVizinhancaLayer = null; }
+    zonasVizinhancaOn = false;
+    btn.innerHTML = '&#128679; Bairros (piloto)';
     btn.classList.remove('active');
   }
 }
