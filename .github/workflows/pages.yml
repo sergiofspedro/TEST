@@ -173,13 +173,19 @@ jobs:
       - name: Embed MOVES-IT extra layers (CMM ArcGIS server)
         run: |
           python3 - << 'PYEOF'
-          import urllib.request, json
+          import urllib.request, json, re
 
           ARCGIS = 'https://infosig.cm-matosinhos.pt/arcgis/rest/services'
           SERVER = 'https://infosig.cm-matosinhos.pt/server/rest/services'
 
           # key -> list of layer URLs (more than one = merged into a single toggle,
-          # per explicit request: 7+8 and 29+32+53 in AMB_LimpezaUrbana should be one button each)
+          # per explicit request: 7+8 and 29+32 in AMB_LimpezaUrbana should be one button each).
+          # NOTE: id 53 ("Equipamentos para Recolha de Resíduos - Total") was dropped from
+          # 'ecopontos' — at 7,680 features (vs ~1,600/~1,000 for its siblings) it was ~87% of
+          # ALL embedded MOVES-IT features and pushed the deploy past GitHub Pages' 10-minute
+          # timeout. Its "Total" naming also suggests a broader waste-equipment rollup, not
+          # specifically recycling points. Re-add if it's actually wanted — will need a
+          # different approach (pagination / narrower outFields) to fit.
           LAYERS = {
               'bairrosDigitais':     [f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/5'],
               'jardinsParques':      [f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/2'],
@@ -190,8 +196,7 @@ jobs:
               'residuosVerdes':      [f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/7',
                                        f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/8'],
               'ecopontos':           [f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/29',
-                                       f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/32',
-                                       f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/53'],
+                                       f'{ARCGIS}/AMB_LimpezaUrbana/FeatureServer/32'],
               'saude':               [f'{SERVER}/AtividadesEconomicas/MapServer/4'],
               'educacao':            [f'{SERVER}/AtividadesEconomicas/MapServer/6'],
               'desporto':            [f'{SERVER}/AtividadesEconomicas/MapServer/7'],
@@ -203,13 +208,30 @@ jobs:
               'estacoesParagens':    [f'{ARCGIS}/CARTAHABIT_1Diagnostico/MapServer/1'],
           }
 
+          # Pure ArcGIS bookkeeping — never used by the front-end tooltip picker, only bloat.
+          DROP_FIELDS = re.compile(
+              r'^(OBJECTID|OBJECTID_\d+|GlobalID|Shape__Length|Shape__Area|'
+              r'Shape\.ST(Length|Area)\(\)|SHAPE\.ST(Length|Area)\(\))$', re.IGNORECASE)
+
+          def round_coords(coords):
+              if isinstance(coords, (int, float)):
+                  return round(coords, 6)
+              return [round_coords(c) for c in coords]
+
+          def simplify(feat):
+              feat['properties'] = {k: v for k, v in feat['properties'].items() if not DROP_FIELDS.match(k)}
+              geom = feat.get('geometry')
+              if geom and geom.get('coordinates') is not None:
+                  geom['coordinates'] = round_coords(geom['coordinates'])
+              return feat
+
           def fetch_features(layer_url):
               url = layer_url + '/query?where=1%3D1&outFields=*&f=geojson'
               try:
                   req = urllib.request.Request(url, headers={'User-Agent': 'MOVESIT-deploy/1.0'})
                   with urllib.request.urlopen(req, timeout=20) as r:
                       data = json.loads(r.read().decode('utf-8'))
-                  feats = data.get('features', [])
+                  feats = [simplify(f) for f in data.get('features', [])]
                   print(f'  {layer_url}: {len(feats)} features', flush=True)
                   return feats
               except Exception as e:
@@ -217,11 +239,13 @@ jobs:
                   return []
 
           result = {}
+          total_feats = 0
           for key, urls in LAYERS.items():
               feats = []
               for u in urls:
                   feats.extend(fetch_features(u))
               result[key] = {'type': 'FeatureCollection', 'features': feats}
+              total_feats += len(feats)
               if feats:
                   print(f'{key}: {len(feats)} total | sample properties: '
                         + json.dumps(feats[0]["properties"], ensure_ascii=False), flush=True)
@@ -229,6 +253,7 @@ jobs:
                   print(f'{key}: 0 features', flush=True)
 
           js = 'var EXTRA_LAYERS_DATA = ' + json.dumps(result, ensure_ascii=False) + ';'
+          print(f'Total MOVES-IT extra features: {total_feats} | payload size: {len(js)} bytes', flush=True)
           with open('matosinhos_map.html', 'r', encoding='utf-8') as f:
               html = f.read()
           html = html.replace('var EXTRA_LAYERS_DATA = {};', js, 1)
