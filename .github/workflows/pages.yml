@@ -206,6 +206,10 @@ jobs:
               'linhaMetro':          [f'{SERVER}/AtividadesEconomicas/MapServer/24'],
               'estacoesMetro':       [f'{SERVER}/AtividadesEconomicas/MapServer/155'],
               'estacoesParagens':    [f'{ARCGIS}/CARTAHABIT_1Diagnostico/MapServer/1'],
+              'infraestruturaCiclavel':    [f'{SERVER}/AtividadesEconomicas/MapServer/122'],
+              'estacionamentoBicicletas':  [f'{SERVER}/AtividadesEconomicas/MapServer/124'],
+              'patrimonioCultural':        [f'{SERVER}/AtividadesEconomicas/MapServer/162'],
+              'areasArqueologicas':        [f'{SERVER}/AtividadesEconomicas/MapServer/165'],
           }
 
           # Pure ArcGIS bookkeeping — never used by the front-end tooltip picker, only bloat.

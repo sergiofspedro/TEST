@@ -558,9 +558,13 @@ var EXTRA_LAYERS = [
   { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#4895EF', geom: 'point',   data: EXTRA_LAYERS_DATA.desporto },
   { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#e76f51', geom: 'point',   data: EXTRA_LAYERS_DATA.solidariedade },
   { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#ff924c', geom: 'point',   data: EXTRA_LAYERS_DATA.cultura },
+  { key: 'patrimonioCultural',   label: 'Património Cultural Imóvel',      category: 'Cultura',        color: '#c9a227', geom: 'point',   data: EXTRA_LAYERS_DATA.patrimonioCultural },
+  { key: 'areasArqueologicas',   label: 'Áreas Arqueológicas',             category: 'Cultura',        color: '#a67c52', geom: 'polygon', data: EXTRA_LAYERS_DATA.areasArqueologicas },
   { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#ffd60a', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro },
   { key: 'estacoesMetro',        label: 'Estações de Metro',               category: 'Mobilidade',     color: '#ffd60a', geom: 'point',   data: EXTRA_LAYERS_DATA.estacoesMetro },
   { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#ffc300', geom: 'point',   data: EXTRA_LAYERS_DATA.estacoesParagens },
+  { key: 'infraestruturaCiclavel',   label: 'Infraestrutura Ciclável',     category: 'Mobilidade',     color: '#52b788', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
+  { key: 'estacionamentoBicicletas', label: 'Estacionamento Bicicletas',   category: 'Mobilidade',     color: '#74c69d', geom: 'point',   data: EXTRA_LAYERS_DATA.estacionamentoBicicletas },
 ];
 var extraLayerState = {}; // key -> { layer: L.layer|null, on: bool }
 
