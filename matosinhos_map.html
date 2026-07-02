@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MOVESIT – Mapa Matosinhos</title>
+<title>MOVES-IT participants mapping</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -45,6 +45,31 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
 }
 #toggle-bairros.active { background: rgba(245,197,24,0.25); border-color: rgba(245,197,24,0.6); }
+#toggle-habitacao {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-habitacao.active { background: rgba(230,57,70,0.25); border-color: rgba(230,57,70,0.6); }
+#toggle-equipamentos {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-equipamentos.active { background: rgba(76,201,240,0.25); border-color: rgba(76,201,240,0.6); }
+#toggle-associacoes {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-associacoes.active { background: rgba(255,146,76,0.25); border-color: rgba(255,146,76,0.6); }
+#toggle-areas-ajardinadas {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-areas-ajardinadas.active { background: rgba(45,106,79,0.35); border-color: rgba(45,106,79,0.7); }
+#toggle-zonas-vizinhanca {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-zonas-vizinhanca.active { background: rgba(230,126,34,0.3); border-color: rgba(230,126,34,0.65); }
 
 #main { display: flex; flex: 1; overflow: hidden; }
 #map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
@@ -113,7 +138,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 <body>
 
 <div id="topbar">
-  <h1>&#128506; MOVESIT – Residentes Matosinhos</h1>
+  <h1>&#128506; MOVES-IT participants mapping</h1>
   <div class="filter-group"><label>&#128269; Nome</label>
     <input type="text" id="search-input" placeholder="pesquisar nome…"></div>
   <div class="filter-group"><label>Freguesia</label>
@@ -126,6 +151,11 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
     </select></div>
   <button id="toggle-boundaries" onclick="toggleBoundaries()">&#128205; Limites</button>
   <button id="toggle-bairros" onclick="toggleBairros()">&#127984; Bairros</button>
+  <button id="toggle-habitacao" onclick="toggleHabitacao()">&#127968; Habitação</button>
+  <button id="toggle-equipamentos" onclick="toggleEquipamentos()">&#127963; Equip.</button>
+  <button id="toggle-associacoes" onclick="toggleAssociacoes()">&#129309; Assoc.</button>
+  <button id="toggle-areas-ajardinadas" onclick="toggleAreasAjardinadas()">&#127795; Áreas Verdes</button>
+  <button id="toggle-zonas-vizinhanca" onclick="toggleZonasVizinhanca()">&#128679; Bairros (piloto)</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
 </div>
@@ -255,8 +285,13 @@ var PARISH_COLOR = {
 // var BOUNDARY_GEOJSON = { "senhora da hora": { GeoJSON Feature }, … };
 var BOUNDARY_GEOJSON = {};
 
-// GeoJSON bairros digitais — injected at deploy time by GitHub Actions.
+// GeoJSON layers — injected at deploy time by GitHub Actions.
 var BAIRROS_GEOJSON = {};
+var HABITACAO_SOCIAL_GEOJSON = {};
+var EQUIPAMENTOS_GEOJSON = {};
+var ASSOCIACOES_GEOJSON = {};
+var AREAS_AJARDINADAS_GEOJSON = {};
+var ZONAS_VIZINHANCA_GEOJSON = {};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -280,8 +315,18 @@ L.control.layers(
 var markers        = [];
 var boundaryLayers = [];
 var boundariesOn   = false;
-var bairrosLayer   = null;
-var bairrosOn      = false;
+var bairrosLayer      = null;
+var bairrosOn         = false;
+var habitacaoLayer    = null;
+var habitacaoOn       = false;
+var equipamentosLayer = null;
+var equipamentosOn    = false;
+var associacoesLayer  = null;
+var associacoesOn     = false;
+var areasAjardinadasLayer = null;
+var areasAjardinadasOn    = false;
+var zonasVizinhancaLayer = null;
+var zonasVizinhancaOn    = false;
 var selectedMarker = null;
 var activeFilter   = null;
 
@@ -446,34 +491,30 @@ function toggleBoundaries() {
   var btn = document.getElementById('toggle-boundaries');
   if (!boundariesOn) {
     if (Object.keys(BOUNDARY_GEOJSON).length === 0) {
-      btn.textContent = '&#128205; Limites (N/D)';
+      btn.innerHTML = '&#128205; Limites (N/D)';
       return;
     }
     drawBoundaries();
     boundariesOn = true;
-    btn.textContent = '&#128205; Limites &#10003;';
+    btn.innerHTML = '&#128205; Limites &#10003;';
     btn.classList.add('active');
   } else {
     boundaryLayers.forEach(function(l) { if (map.hasLayer(l)) map.removeLayer(l); });
     boundaryLayers = [];
     boundariesOn   = false;
-    btn.textContent = '&#128205; Limites';
+    btn.innerHTML = '&#128205; Limites';
     btn.classList.remove('active');
   }
 }
 
-// ─── BAIRROS DIGITAIS ────────────────────────────────────────────────────────
+// ─── LIMITES DE BAIRROS ──────────────────────────────────────────────────────
 function drawBairros() {
   if (!BAIRROS_GEOJSON.features || !BAIRROS_GEOJSON.features.length) return false;
   bairrosLayer = L.geoJSON(BAIRROS_GEOJSON, {
     style: { color: '#f5c518', weight: 2, opacity: 0.9, dashArray: '6 4',
              fillColor: '#f5c518', fillOpacity: 0.12 },
     onEachFeature: function(feat, layer) {
-      layer.bindTooltip(
-        '<b>' + (feat.properties.designacao || '') + '</b><br>'
-        + (feat.properties.freguesia || ''),
-        { sticky: true }
-      );
+      layer.bindTooltip('<b>' + (feat.properties.designacao || '') + '</b>', { sticky: true });
     }
   }).addTo(map);
   return true;
@@ -482,14 +523,186 @@ function drawBairros() {
 function toggleBairros() {
   var btn = document.getElementById('toggle-bairros');
   if (!bairrosOn) {
-    if (!drawBairros()) { btn.textContent = '&#127984; Bairros (N/D)'; return; }
+    if (!drawBairros()) { btn.innerHTML = '&#127984; Bairros (N/D)'; return; }
     bairrosOn = true;
-    btn.textContent = '&#127984; Bairros &#10003;';
+    btn.innerHTML = '&#127984; Bairros &#10003;';
     btn.classList.add('active');
   } else {
     if (bairrosLayer) { map.removeLayer(bairrosLayer); bairrosLayer = null; }
     bairrosOn = false;
-    btn.textContent = '&#127984; Bairros';
+    btn.innerHTML = '&#127984; Bairros';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── HABITAÇÃO SOCIAL (Limites_BairrosSociais) ──────────────────────────────
+function drawHabitacao() {
+  if (!HABITACAO_SOCIAL_GEOJSON.features || !HABITACAO_SOCIAL_GEOJSON.features.length) return false;
+  habitacaoLayer = L.geoJSON(HABITACAO_SOCIAL_GEOJSON, {
+    style: { color: '#e63946', weight: 2, opacity: 0.9, dashArray: '4 3',
+             fillColor: '#e63946', fillOpacity: 0.18 },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.descricao || '') + '</b>'
+        + (p.n_fogos ? ' (' + p.n_fogos + ' fogos' + (p.ano_const ? ', ' + p.ano_const : '') + ')' : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleHabitacao() {
+  var btn = document.getElementById('toggle-habitacao');
+  if (!habitacaoOn) {
+    if (!drawHabitacao()) { btn.innerHTML = '&#127968; Habitação (N/D)'; return; }
+    habitacaoOn = true;
+    btn.innerHTML = '&#127968; Habitação &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (habitacaoLayer) { map.removeLayer(habitacaoLayer); habitacaoLayer = null; }
+    habitacaoOn = false;
+    btn.innerHTML = '&#127968; Habitação';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── EQUIPAMENTOS ────────────────────────────────────────────────────────────
+function drawEquipamentos() {
+  if (!EQUIPAMENTOS_GEOJSON.features || !EQUIPAMENTOS_GEOJSON.features.length) return false;
+  equipamentosLayer = L.geoJSON(EQUIPAMENTOS_GEOJSON, {
+    pointToLayer: function(feat, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, color: '#4CC9F0', weight: 1.5, opacity: 1,
+        fillColor: '#4CC9F0', fillOpacity: 0.7
+      });
+    },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.dominio || '') + (p.categoria ? ' – ' + p.categoria : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleEquipamentos() {
+  var btn = document.getElementById('toggle-equipamentos');
+  if (!equipamentosOn) {
+    if (!drawEquipamentos()) { btn.innerHTML = '&#127963; Equip. (N/D)'; return; }
+    equipamentosOn = true;
+    btn.innerHTML = '&#127963; Equip. &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (equipamentosLayer) { map.removeLayer(equipamentosLayer); equipamentosLayer = null; }
+    equipamentosOn = false;
+    btn.innerHTML = '&#127963; Equip.';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── ASSOCIAÇÕES ─────────────────────────────────────────────────────────────
+function drawAssociacoes() {
+  if (!ASSOCIACOES_GEOJSON.features || !ASSOCIACOES_GEOJSON.features.length) return false;
+  associacoesLayer = L.geoJSON(ASSOCIACOES_GEOJSON, {
+    pointToLayer: function(feat, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, color: '#FF924C', weight: 1.5, opacity: 1,
+        fillColor: '#FF924C', fillOpacity: 0.7
+      });
+    },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleAssociacoes() {
+  var btn = document.getElementById('toggle-associacoes');
+  if (!associacoesOn) {
+    if (!drawAssociacoes()) { btn.innerHTML = '&#129309; Assoc. (N/D)'; return; }
+    associacoesOn = true;
+    btn.innerHTML = '&#129309; Assoc. &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (associacoesLayer) { map.removeLayer(associacoesLayer); associacoesLayer = null; }
+    associacoesOn = false;
+    btn.innerHTML = '&#129309; Assoc.';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── ÁREAS AJARDINADAS ───────────────────────────────────────────────────────
+function drawAreasAjardinadas() {
+  if (!AREAS_AJARDINADAS_GEOJSON.features || !AREAS_AJARDINADAS_GEOJSON.features.length) return false;
+  areasAjardinadasLayer = L.geoJSON(AREAS_AJARDINADAS_GEOJSON, {
+    style: { color: '#2d6a4f', weight: 1.5, opacity: 0.9,
+             fillColor: '#2d6a4f', fillOpacity: 0.25 },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.designacao || '') + '</b>'
+        + (p.area_m2 != null ? ' (' + Math.round(p.area_m2) + ' m&sup2;)' : '') + '<br>'
+        + (p.freguesia || ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleAreasAjardinadas() {
+  var btn = document.getElementById('toggle-areas-ajardinadas');
+  if (!areasAjardinadasOn) {
+    if (!drawAreasAjardinadas()) { btn.innerHTML = '&#127795; Áreas Verdes (N/D)'; return; }
+    areasAjardinadasOn = true;
+    btn.innerHTML = '&#127795; Áreas Verdes &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (areasAjardinadasLayer) { map.removeLayer(areasAjardinadasLayer); areasAjardinadasLayer = null; }
+    areasAjardinadasOn = false;
+    btn.innerHTML = '&#127795; Áreas Verdes';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── ZONAS DE VIZINHANÇA (CMM pilot project "O meu bairro / A minha rua" — partial coverage) ──
+function drawZonasVizinhanca() {
+  if (!ZONAS_VIZINHANCA_GEOJSON.features || !ZONAS_VIZINHANCA_GEOJSON.features.length) return false;
+  zonasVizinhancaLayer = L.geoJSON(ZONAS_VIZINHANCA_GEOJSON, {
+    style: { color: '#e67e22', weight: 2, opacity: 0.9, dashArray: '3 3',
+             fillColor: '#e67e22', fillOpacity: 0.15 },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties || {};
+      var label = p.designacao || p.Designacao || p.DESIGNACAO || p.designação
+        || p.nome || p.Nome || p.NOME || p.descricao || p.Descricao || 'Zona de vizinhança';
+      layer.bindTooltip(
+        '<b>' + label + '</b><br><span style="opacity:.7">Projeto piloto — cobertura parcial</span>',
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleZonasVizinhanca() {
+  var btn = document.getElementById('toggle-zonas-vizinhanca');
+  if (!zonasVizinhancaOn) {
+    if (!drawZonasVizinhanca()) { btn.innerHTML = '&#128679; Bairros (piloto) (N/D)'; return; }
+    zonasVizinhancaOn = true;
+    btn.innerHTML = '&#128679; Bairros (piloto) &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (zonasVizinhancaLayer) { map.removeLayer(zonasVizinhancaLayer); zonasVizinhancaLayer = null; }
+    zonasVizinhancaOn = false;
+    btn.innerHTML = '&#128679; Bairros (piloto)';
     btn.classList.remove('active');
   }
 }
