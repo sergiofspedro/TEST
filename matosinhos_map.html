@@ -133,6 +133,36 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   padding: 16px 24px; border-radius: 8px; font-size: 14px; color: #aaa;
   z-index: 400; text-align: center; border: 1px solid rgba(255,255,255,0.1);
 }
+
+#toggle-layers-panel {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-layers-panel.active { background: rgba(158,127,221,0.3); border-color: rgba(158,127,221,0.65); }
+
+#layers-panel {
+  display: none; position: absolute; top: 12px; right: 12px; z-index: 900;
+  background: rgba(22,33,62,0.97); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 12px 14px; width: 270px; max-height: 75vh; overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5); font-size: 12px; color: #e0e0e0;
+}
+#layers-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: bold; margin-bottom: 10px; color: #fff; font-size: 13px;
+}
+#layers-panel-close {
+  background: rgba(255,255,255,0.1); border: none; color: #e0e0e0;
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 11px;
+}
+.layer-category { margin-bottom: 12px; }
+.layer-category b {
+  display: block; margin-bottom: 6px; color: #fff; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.7;
+}
+.layer-check { display: flex; align-items: center; gap: 7px; padding: 3px 0; cursor: pointer; }
+.layer-check input { cursor: pointer; }
+.layer-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3); }
+.layer-nd { opacity: 0.55; font-size: 10px; margin-left: auto; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -156,12 +186,19 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   <button id="toggle-associacoes" onclick="toggleAssociacoes()">&#129309; Assoc.</button>
   <button id="toggle-areas-ajardinadas" onclick="toggleAreasAjardinadas()">&#127795; Áreas Verdes</button>
   <button id="toggle-zonas-vizinhanca" onclick="toggleZonasVizinhanca()">&#128679; Bairros (piloto)</button>
+  <button id="toggle-layers-panel" onclick="toggleLayersPanel()">&#128706; Mais Camadas</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
 </div>
 
 <div id="main">
   <div id="map">
+    <div id="layers-panel">
+      <div id="layers-panel-header">Camadas MOVES-IT
+        <button id="layers-panel-close" onclick="toggleLayersPanel()">&#10005;</button>
+      </div>
+      <div id="layers-panel-body"></div>
+    </div>
     <div id="legend">
       <b>Freguesia</b>
       <div class="leg-row" data-parish="Senhora da Hora" onclick="toggleFilter('Senhora da Hora')">
@@ -292,6 +329,10 @@ var EQUIPAMENTOS_GEOJSON = {};
 var ASSOCIACOES_GEOJSON = {};
 var AREAS_AJARDINADAS_GEOJSON = {};
 var ZONAS_VIZINHANCA_GEOJSON = {};
+
+// MOVES-IT extra layers — injected at deploy time by GitHub Actions.
+// Object keyed by layer key -> GeoJSON FeatureCollection (see EXTRA_LAYERS config below).
+var EXTRA_LAYERS_DATA = {};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -707,11 +748,126 @@ function toggleZonasVizinhanca() {
   }
 }
 
+// ─── MOVES-IT EXTRA LAYERS (data-driven, grouped checkbox panel) ─────────────
+// Each entry: key must match a property on EXTRA_LAYERS_DATA (injected at deploy time).
+var EXTRA_LAYERS = [
+  { key: 'bairrosDigitais',      label: 'Bairros Digitais',                category: 'Bairro Digital', color: '#f5c518', geom: 'point'   },
+  { key: 'jardinsParques',       label: 'Jardins e Parques',               category: 'Verde & Azul',   color: '#2d6a4f', geom: 'point'   },
+  { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#4CC9F0', geom: 'line'    },
+  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#4895EF', geom: 'line'    },
+  { key: 'baciasHidrograficas',  label: 'Bacias Hidrográficas',            category: 'Verde & Azul',   color: '#3A86FF', geom: 'polygon' },
+  { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#588157', geom: 'point'   },
+  { key: 'ecopontos',            label: 'Ecopontos',                       category: 'Verde & Azul',   color: '#40916C', geom: 'point'   },
+  { key: 'equip3idade',          label: 'Equipamentos 3ª Idade',           category: 'Inclusão',       color: '#9d4edd', geom: 'point'   },
+  { key: 'equipEscolares',       label: 'Equipamentos Escolares',          category: 'Inclusão',       color: '#f72585', geom: 'point'   },
+  { key: 'saude',                label: 'Saúde',                           category: 'Inclusão',       color: '#e63946', geom: 'point'   },
+  { key: 'educacao',             label: 'Educação',                        category: 'Inclusão',       color: '#ff8fa3', geom: 'point'   },
+  { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#4895EF', geom: 'point'   },
+  { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#e76f51', geom: 'point'   },
+  { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#ff924c', geom: 'point'   },
+  { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#ffd60a', geom: 'line'    },
+  { key: 'estacoesMetro',        label: 'Estações de Metro',               category: 'Mobilidade',     color: '#ffd60a', geom: 'point'   },
+  { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#ffc300', geom: 'point'   },
+];
+var extraLayerState = {}; // key -> { layer: L.layer|null, on: bool }
+
+function pickLabel(props) {
+  if (!props) return '';
+  var candidates = ['designacao','Designacao','DESIGNACAO','designação','Designação',
+                     'nome','Nome','NOME','name','Name','NAME',
+                     'descricao','Descricao','DESCRICAO','descrição','Descrição'];
+  for (var i = 0; i < candidates.length; i++) {
+    if (props[candidates[i]]) return String(props[candidates[i]]);
+  }
+  for (var k in props) {
+    if (typeof props[k] === 'string' && props[k].trim()) return props[k];
+  }
+  return '';
+}
+
+function drawExtraLayer(cfg) {
+  var data = EXTRA_LAYERS_DATA[cfg.key];
+  if (!data || !data.features || !data.features.length) return false;
+  var layer = L.geoJSON(data, {
+    pointToLayer: function(feat, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, color: cfg.color, weight: 1.5, opacity: 1,
+        fillColor: cfg.color, fillOpacity: 0.7
+      });
+    },
+    style: function() {
+      return cfg.geom === 'line'
+        ? { color: cfg.color, weight: 2.5, opacity: 0.85 }
+        : { color: cfg.color, weight: 2, opacity: 0.9, fillColor: cfg.color, fillOpacity: 0.2 };
+    },
+    onEachFeature: function(feat, lyr) {
+      var label = pickLabel(feat.properties) || cfg.label;
+      lyr.bindTooltip('<b>' + label + '</b>', { sticky: true });
+    }
+  }).addTo(map);
+  extraLayerState[cfg.key].layer = layer;
+  return true;
+}
+
+function toggleExtraLayer(key) {
+  var cfg = null;
+  for (var i = 0; i < EXTRA_LAYERS.length; i++) { if (EXTRA_LAYERS[i].key === key) { cfg = EXTRA_LAYERS[i]; break; } }
+  if (!cfg) return;
+  var state = extraLayerState[key];
+  var checkbox = document.getElementById('chk-' + key);
+  var statusEl = document.getElementById('status-' + key);
+  if (checkbox.checked) {
+    if (!drawExtraLayer(cfg)) {
+      checkbox.checked = false;
+      if (statusEl) statusEl.textContent = ' (N/D)';
+      return;
+    }
+    state.on = true;
+    if (statusEl) statusEl.textContent = '';
+  } else {
+    if (state.layer) { map.removeLayer(state.layer); state.layer = null; }
+    state.on = false;
+  }
+}
+
+function buildLayersPanel() {
+  var byCategory = {};
+  var order = [];
+  EXTRA_LAYERS.forEach(function(cfg) {
+    extraLayerState[cfg.key] = { layer: null, on: false };
+    if (!byCategory[cfg.category]) { byCategory[cfg.category] = []; order.push(cfg.category); }
+    byCategory[cfg.category].push(cfg);
+  });
+  var html = '';
+  order.forEach(function(cat) {
+    html += '<div class="layer-category"><b>' + cat + '</b>';
+    byCategory[cat].forEach(function(cfg) {
+      html += '<label class="layer-check">'
+        + '<input type="checkbox" id="chk-' + cfg.key + '" onchange="toggleExtraLayer(\'' + cfg.key + '\')">'
+        + '<span class="layer-swatch" style="background:' + cfg.color + '"></span>'
+        + cfg.label
+        + '<span id="status-' + cfg.key + '" class="layer-nd"></span>'
+        + '</label>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('layers-panel-body').innerHTML = html;
+}
+
+function toggleLayersPanel() {
+  var panel = document.getElementById('layers-panel');
+  var btn = document.getElementById('toggle-layers-panel');
+  var isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('active', !isOpen);
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function initMap() {
   ADDRESSES.forEach(function(rec) { addMarker(rec); });
   updateCounts();
   applyFilters();
+  buildLayersPanel();
 }
 
 initMap();
