@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MOVESIT – Mapa Matosinhos</title>
+<title>MOVES-IT participants mapping</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -45,6 +45,21 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
 }
 #toggle-bairros.active { background: rgba(245,197,24,0.25); border-color: rgba(245,197,24,0.6); }
+#toggle-habitacao {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-habitacao.active { background: rgba(230,57,70,0.25); border-color: rgba(230,57,70,0.6); }
+#toggle-equipamentos {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-equipamentos.active { background: rgba(76,201,240,0.25); border-color: rgba(76,201,240,0.6); }
+#toggle-associacoes {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+#toggle-associacoes.active { background: rgba(255,146,76,0.25); border-color: rgba(255,146,76,0.6); }
 
 #main { display: flex; flex: 1; overflow: hidden; }
 #map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
@@ -113,7 +128,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 <body>
 
 <div id="topbar">
-  <h1>&#128506; MOVESIT – Residentes Matosinhos</h1>
+  <h1>&#128506; MOVES-IT participants mapping</h1>
   <div class="filter-group"><label>&#128269; Nome</label>
     <input type="text" id="search-input" placeholder="pesquisar nome…"></div>
   <div class="filter-group"><label>Freguesia</label>
@@ -126,6 +141,9 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
     </select></div>
   <button id="toggle-boundaries" onclick="toggleBoundaries()">&#128205; Limites</button>
   <button id="toggle-bairros" onclick="toggleBairros()">&#127984; Bairros</button>
+  <button id="toggle-habitacao" onclick="toggleHabitacao()">&#127968; Habitação</button>
+  <button id="toggle-equipamentos" onclick="toggleEquipamentos()">&#127963; Equip.</button>
+  <button id="toggle-associacoes" onclick="toggleAssociacoes()">&#129309; Assoc.</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
 </div>
@@ -255,8 +273,11 @@ var PARISH_COLOR = {
 // var BOUNDARY_GEOJSON = { "senhora da hora": { GeoJSON Feature }, … };
 var BOUNDARY_GEOJSON = {};
 
-// GeoJSON bairros digitais — injected at deploy time by GitHub Actions.
-var BAIRROS_GEOJSON = {};
+// GeoJSON layers — injected at deploy time by GitHub Actions.
+var BAIRROS_GEOJSON           = {};
+var HABITACAO_SOCIAL_GEOJSON  = {};
+var EQUIPAMENTOS_GEOJSON      = {};
+var ASSOCIACOES_GEOJSON       = {};
 
 // ─── MAP ─────────────────────────────────────────────────────────────────────
 var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
@@ -280,8 +301,14 @@ L.control.layers(
 var markers        = [];
 var boundaryLayers = [];
 var boundariesOn   = false;
-var bairrosLayer   = null;
-var bairrosOn      = false;
+var bairrosLayer      = null;
+var bairrosOn         = false;
+var habitacaoLayer    = null;
+var habitacaoOn       = false;
+var equipamentosLayer = null;
+var equipamentosOn    = false;
+var associacoesLayer  = null;
+var associacoesOn     = false;
 var selectedMarker = null;
 var activeFilter   = null;
 
@@ -490,6 +517,113 @@ function toggleBairros() {
     if (bairrosLayer) { map.removeLayer(bairrosLayer); bairrosLayer = null; }
     bairrosOn = false;
     btn.textContent = '&#127984; Bairros';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── HABITAÇÃO SOCIAL ────────────────────────────────────────────────────────
+function drawHabitacao() {
+  if (!HABITACAO_SOCIAL_GEOJSON.features || !HABITACAO_SOCIAL_GEOJSON.features.length) return false;
+  habitacaoLayer = L.geoJSON(HABITACAO_SOCIAL_GEOJSON, {
+    style: { color: '#e63946', weight: 2, opacity: 0.9, dashArray: '4 3',
+             fillColor: '#e63946', fillOpacity: 0.18 },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.descricao || '') + '</b>'
+        + (p.n_fogos ? ' (' + p.n_fogos + ' fogos)' : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleHabitacao() {
+  var btn = document.getElementById('toggle-habitacao');
+  if (!habitacaoOn) {
+    if (!drawHabitacao()) { btn.textContent = '&#127968; Habitação (N/D)'; return; }
+    habitacaoOn = true;
+    btn.textContent = '&#127968; Habitação &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (habitacaoLayer) { map.removeLayer(habitacaoLayer); habitacaoLayer = null; }
+    habitacaoOn = false;
+    btn.textContent = '&#127968; Habitação';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── EQUIPAMENTOS ────────────────────────────────────────────────────────────
+function drawEquipamentos() {
+  if (!EQUIPAMENTOS_GEOJSON.features || !EQUIPAMENTOS_GEOJSON.features.length) return false;
+  equipamentosLayer = L.geoJSON(EQUIPAMENTOS_GEOJSON, {
+    pointToLayer: function(feat, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, color: '#4CC9F0', weight: 1.5, opacity: 1,
+        fillColor: '#4CC9F0', fillOpacity: 0.7
+      });
+    },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.dominio || '') + (p.categoria ? ' – ' + p.categoria : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleEquipamentos() {
+  var btn = document.getElementById('toggle-equipamentos');
+  if (!equipamentosOn) {
+    if (!drawEquipamentos()) { btn.textContent = '&#127963; Equip. (N/D)'; return; }
+    equipamentosOn = true;
+    btn.textContent = '&#127963; Equip. &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (equipamentosLayer) { map.removeLayer(equipamentosLayer); equipamentosLayer = null; }
+    equipamentosOn = false;
+    btn.textContent = '&#127963; Equip.';
+    btn.classList.remove('active');
+  }
+}
+
+// ─── ASSOCIAÇÕES ─────────────────────────────────────────────────────────────
+function drawAssociacoes() {
+  if (!ASSOCIACOES_GEOJSON.features || !ASSOCIACOES_GEOJSON.features.length) return false;
+  associacoesLayer = L.geoJSON(ASSOCIACOES_GEOJSON, {
+    pointToLayer: function(feat, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, color: '#FF924C', weight: 1.5, opacity: 1,
+        fillColor: '#FF924C', fillOpacity: 0.7
+      });
+    },
+    onEachFeature: function(feat, layer) {
+      var p = feat.properties;
+      layer.bindTooltip(
+        '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.dominio || '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : ''),
+        { sticky: true }
+      );
+    }
+  }).addTo(map);
+  return true;
+}
+function toggleAssociacoes() {
+  var btn = document.getElementById('toggle-associacoes');
+  if (!associacoesOn) {
+    if (!drawAssociacoes()) { btn.textContent = '&#129309; Assoc. (N/D)'; return; }
+    associacoesOn = true;
+    btn.textContent = '&#129309; Assoc. &#10003;';
+    btn.classList.add('active');
+  } else {
+    if (associacoesLayer) { map.removeLayer(associacoesLayer); associacoesLayer = null; }
+    associacoesOn = false;
+    btn.textContent = '&#129309; Assoc.';
     btn.classList.remove('active');
   }
 }
