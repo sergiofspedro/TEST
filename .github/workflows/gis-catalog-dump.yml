@@ -1,0 +1,90 @@
+name: GIS Catalog Dump (scratch)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enumerate CMM ArcGIS Server catalog
+        run: |
+          python3 - << 'PYEOF'
+          import urllib.request, json, sys
+
+          BASES = [
+              'https://infosig.cm-matosinhos.pt/server/rest/services',
+              'https://infosig.cm-matosinhos.pt/arcgis/rest/services',
+          ]
+
+          def fetch_json(url):
+              req = urllib.request.Request(url, headers={'User-Agent': 'MOVESIT-catalog/1.0'})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return json.loads(r.read().decode('utf-8'))
+
+          services = []
+          seen = set()
+
+          def walk(base, path=''):
+              url = base + path + '?f=json'
+              try:
+                  data = fetch_json(url)
+              except Exception as e:
+                  print(f'ERROR listing {url}: {e}', flush=True)
+                  return
+              for folder in data.get('folders', []):
+                  walk(base, path + '/' + folder)
+              for svc in data.get('services', []):
+                  name = svc.get('name')
+                  stype = svc.get('type')
+                  key = (base, name, stype)
+                  if key in seen:
+                      continue
+                  seen.add(key)
+                  services.append({'base': base, 'name': name, 'type': stype,
+                                    'url': base + '/' + name + '/' + stype})
+
+          for base in BASES:
+              walk(base)
+
+          print(f'Discovered {len(services)} services total', flush=True)
+
+          catalog = []
+          for svc in services:
+              try:
+                  meta = fetch_json(svc['url'] + '?f=json')
+              except Exception as e:
+                  print(f'ERROR service meta {svc["url"]}: {e}', flush=True)
+                  continue
+              layers = meta.get('layers', []) or []
+              tables = meta.get('tables', []) or []
+              if not layers and not tables:
+                  catalog.append({'service': svc['name'], 'type': svc['type'],
+                                   'id': None, 'name': meta.get('mapName') or meta.get('serviceDescription') or '(single-layer/no sublayers)',
+                                   'geom': meta.get('geometryType', ''), 'table': False})
+                  continue
+              for lyr in layers:
+                  catalog.append({'service': svc['name'], 'type': svc['type'],
+                                   'id': lyr.get('id'), 'name': lyr.get('name'),
+                                   'geom': lyr.get('geometryType', ''), 'table': False})
+              for tbl in tables:
+                  catalog.append({'service': svc['name'], 'type': svc['type'],
+                                   'id': tbl.get('id'), 'name': tbl.get('name'),
+                                   'geom': '', 'table': True})
+
+          print(f'Discovered {len(catalog)} layers/tables total', flush=True)
+
+          with open('catalog.json', 'w', encoding='utf-8') as f:
+              json.dump({'services': services, 'catalog': catalog}, f, ensure_ascii=False, indent=1)
+
+          print('--- CATALOG DUMP START ---', flush=True)
+          for row in catalog:
+              print(f"{row['service']}|{row['type']}|{row['id']}|{row['name']}|{row['geom']}|{'table' if row['table'] else 'layer'}", flush=True)
+          print('--- CATALOG DUMP END ---', flush=True)
+          PYEOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gis-catalog
+          path: catalog.json
+          retention-days: 1
