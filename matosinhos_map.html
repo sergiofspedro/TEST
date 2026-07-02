@@ -6,16 +6,25 @@
 <title>MOVES-IT participants mapping</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
+body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
 
 #topbar {
   background: #16213e; color: #e0e0e0; padding: 10px 16px;
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 1000;
 }
-#topbar h1 { font-size: 15px; font-weight: bold; white-space: nowrap; color: #ffffff; }
+#topbar h1 { font-family: 'Poppins','Inter',sans-serif; font-size: 15px; font-weight: 700; white-space: nowrap; color: #ffffff; line-height: 1.15; }
+#topbar h1 .subtitle { display: block; font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 500; opacity: 0.55; letter-spacing: 0.02em; }
+.brand-mark { display: flex; align-items: center; gap: 9px; }
+.brand-mark svg { flex-shrink: 0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
 .filter-group { display: flex; align-items: center; gap: 6px; }
 .filter-group label { font-size: 12px; opacity: 0.75; white-space: nowrap; }
 #topbar select {
@@ -49,12 +58,12 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 }
 #sidebar-placeholder svg { margin-bottom: 14px; }
 #sidebar-placeholder p { font-size: 13px; line-height: 1.6; }
-#sidebar-content { display: none; flex-direction: column; flex: 1; }
+#sidebar-content { display: none; flex-direction: column; flex: 1; transition: opacity 0.25s ease; }
 #sidebar-header {
   padding: 14px 16px 12px; position: sticky; top: 0; z-index: 10; position: relative;
   background: #16213e;
 }
-#sidebar-header h2 { font-size: 16px; margin-bottom: 2px; color: #fff; }
+#sidebar-header h2 { font-family: 'Poppins','Inter',sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 2px; color: #fff; }
 #sidebar-header .sub { font-size: 12px; opacity: 0.65; }
 #sidebar-close {
   position: absolute; top: 10px; right: 12px;
@@ -85,11 +94,14 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-size: 12px; color: #e0e0e0;
   border: 1px solid rgba(255,255,255,0.1);
 }
-#legend b { display: block; margin-bottom: 8px; color: #fff; font-size: 12px; }
-.leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; }
+#legend b { display: block; margin-bottom: 8px; color: #fff; font-size: 12px; font-family: 'Poppins','Inter',sans-serif; }
+.leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; transition: opacity 0.2s ease; }
 .leg-row:hover { opacity: 0.75; }
 .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
 .leg-row.dim { opacity: 0.35; }
+#active-layers-section { display: none; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,0.15); }
+#active-layers-section b { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.7; margin-bottom: 7px; }
+.leg-row-static { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11.5px; }
 
 #no-results {
   display: none; position: absolute; top: 50%; left: 50%;
@@ -98,11 +110,19 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
   z-index: 400; text-align: center; border: 1px solid rgba(255,255,255,0.1);
 }
 
-#toggle-layers-panel {
+#toggle-layers-panel, #about-btn {
   background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
   color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-#toggle-layers-panel.active { background: rgba(158,127,221,0.3); border-color: rgba(158,127,221,0.65); }
+#toggle-layers-panel:hover, #about-btn:hover { background: rgba(255,255,255,0.18); }
+#toggle-layers-panel.active, #about-btn.active { background: rgba(158,127,221,0.3); border-color: rgba(158,127,221,0.65); }
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+#layers-panel.opening, #about-panel.opening { animation: panelIn 0.18s ease-out; }
 
 #layers-panel {
   display: none; position: absolute; top: 12px; right: 12px; z-index: 900;
@@ -113,11 +133,40 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 #layers-panel-header {
   display: flex; justify-content: space-between; align-items: center;
   font-weight: bold; margin-bottom: 10px; color: #fff; font-size: 13px;
+  font-family: 'Poppins','Inter',sans-serif;
 }
-#layers-panel-close {
+#layers-panel-close, #about-panel-close {
   background: rgba(255,255,255,0.1); border: none; color: #e0e0e0;
   width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 11px;
 }
+
+#about-panel {
+  display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900;
+  background: rgba(22,33,62,0.97); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; padding: 18px 20px; width: min(420px, 88vw); max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55); font-size: 12.5px; color: #d8d8e6; line-height: 1.55;
+}
+#about-panel-header {
+  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;
+}
+#about-panel h2 {
+  font-family: 'Poppins','Inter',sans-serif; font-size: 17px; color: #fff; margin-bottom: 2px;
+}
+#about-panel .about-tag { font-size: 11px; opacity: 0.6; margin-bottom: 12px; }
+#about-panel .about-list, #about-panel .about-tracks { list-style: none; margin: 8px 0 14px; padding: 0; }
+#about-panel .about-list li, #about-panel .about-tracks li { padding: 5px 0 5px 16px; position: relative; }
+#about-panel .about-list li::before, #about-panel .about-tracks li::before {
+  content: ''; position: absolute; left: 0; top: 11px; width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+}
+#about-panel .about-tracks li:nth-child(1)::before { background: #3a7d44; }
+#about-panel .about-tracks li:nth-child(2)::before { background: #2b6ca3; }
+#about-panel .about-tracks li:nth-child(3)::before { background: #b5773a; }
+#about-panel a { color: #b8a4e8; }
+#about-panel .about-link {
+  display: inline-block; margin-top: 12px; font-size: 11.5px; color: #b8a4e8; text-decoration: none;
+}
+#about-panel .about-link:hover { text-decoration: underline; }
 .layer-category { margin-bottom: 12px; }
 .layer-category b {
   display: block; margin-bottom: 6px; color: #fff; font-size: 11px;
@@ -127,12 +176,59 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
 .layer-check input { cursor: pointer; }
 .layer-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3); }
 .layer-nd { opacity: 0.55; font-size: 10px; margin-left: auto; white-space: nowrap; }
+
+/* category icons for extra-layer point markers */
+.cat-icon {
+  width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; line-height: 1; box-shadow: 0 1px 5px rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.85);
+}
+
+/* resident marker select animation */
+.marker-pin { transition: filter 0.15s ease; }
+.marker-pin.marker-selected { animation: pinPop 0.32s ease; }
+@keyframes pinPop {
+  0%   { transform: scale(0.65); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* marker cluster bubbles, styled to match the dark theme */
+.marker-cluster-custom {
+  background: transparent !important;
+}
+.marker-cluster-custom div {
+  width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 32% 28%, #b8a4e8, #6a4c93 70%);
+  color: #fff; font-family: 'Poppins','Inter',sans-serif; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 3px rgba(158,127,221,0.25);
+  border: 2px solid rgba(255,255,255,0.85);
+}
+
+.fullscreen-btn {
+  font-size: 16px !important; line-height: 26px !important; width: 26px; height: 26px;
+  background: #fff; color: #333; text-align: center; cursor: pointer; display: block;
+}
+.fullscreen-btn:hover { background: #f4f4f4; }
+
+#footer {
+  flex-shrink: 0; background: #12172b; color: rgba(224,224,224,0.55); font-size: 11px;
+  padding: 6px 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.08);
+}
+#footer a { color: rgba(184,164,232,0.9); text-decoration: none; margin-left: 6px; }
+#footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 
 <div id="topbar">
-  <h1>&#128506; MOVES-IT participants mapping</h1>
+  <div class="brand-mark">
+    <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true">
+      <circle cx="14" cy="14" r="11" fill="#3a7d44" opacity="0.85"/>
+      <circle cx="22" cy="14" r="11" fill="#2b6ca3" opacity="0.85"/>
+      <circle cx="18" cy="23" r="11" fill="#b5773a" opacity="0.85"/>
+    </svg>
+    <h1>MOVES-IT<span class="subtitle">Mapeamento de participantes &mdash; Matosinhos</span></h1>
+  </div>
   <div class="filter-group"><label>&#128269; Nome</label>
     <input type="text" id="search-input" placeholder="pesquisar nome…"></div>
   <div class="filter-group"><label>Freguesia</label>
@@ -143,6 +239,7 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
       <option value="Leça do Balio">Leça do Balio</option>
       <option value="Perafita">Perafita</option>
     </select></div>
+  <button id="about-btn" onclick="toggleAboutPanel()">&#8505; Sobre</button>
   <button id="toggle-layers-panel" onclick="toggleLayersPanel()">&#128706; Selecionar Camadas</button>
   <span id="match-count"></span>
   <button id="clear-btn" onclick="clearAll()">&#10005; Limpar</button>
@@ -155,6 +252,28 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
         <button id="layers-panel-close" onclick="toggleLayersPanel()">&#10005;</button>
       </div>
       <div id="layers-panel-body"></div>
+    </div>
+    <div id="about-panel">
+      <div id="about-panel-header">
+        <div>
+          <h2>MOVES-IT</h2>
+          <div class="about-tag">Matosinhos &middot; Ações Urbanas Inovadoras (Comissão Europeia)</div>
+        </div>
+        <button id="about-panel-close" onclick="toggleAboutPanel()">&#10005;</button>
+      </div>
+      <p>O MOVES-IT é um projeto de Ações Urbanas Inovadoras (Urban Initiative) da União Europeia, promovido pela Câmara Municipal de Matosinhos, com 3 componentes:</p>
+      <ul class="about-list">
+        <li>Centro de Inteligência Urbana</li>
+        <li>Concurso Bairro Digital</li>
+        <li>LABIC &mdash; Laboratório de Inovação Cidadã</li>
+      </ul>
+      <p>...e 3 ferramentas territoriais que organizam as camadas deste mapa:</p>
+      <ul class="about-tracks">
+        <li>Matosinhos Inclusivo</li>
+        <li>Matosinhos Verde &amp; Azul</li>
+        <li>Matosinhos Vibrante &mdash; indústrias culturais e criativas</li>
+      </ul>
+      <a class="about-link" href="https://www.urban-initiative.eu/ia-cities/matosinhos/about-projects" target="_blank" rel="noopener">Saber mais sobre o projeto &rarr;</a>
     </div>
     <div id="legend">
       <b>Freguesia</b>
@@ -178,6 +297,10 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
         <div class="leg-dot" style="background:#06D6A0"></div> Lavra</div>
       <div class="leg-row" data-parish="Santa Cruz do Bispo" onclick="toggleFilter('Santa Cruz do Bispo')">
         <div class="leg-dot" style="background:#FB5607"></div> Santa Cruz do Bispo</div>
+      <div id="active-layers-section">
+        <b>Camadas ativas</b>
+        <div id="active-layers-list"></div>
+      </div>
     </div>
     <div id="no-results">Nenhum residente corresponde ao filtro.</div>
   </div>
@@ -201,6 +324,11 @@ body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direct
       </div>
     </div>
   </div>
+</div>
+
+<div id="footer">
+  MOVES-IT &mdash; Matosinhos &middot; Ações Urbanas Inovadoras (Comissão Europeia) &middot; Câmara Municipal de Matosinhos
+  <a href="https://www.urban-initiative.eu/ia-cities/matosinhos/about-projects" target="_blank" rel="noopener">saber mais &rarr;</a>
 </div>
 
 <script>
@@ -309,6 +437,40 @@ L.control.layers(
   { position: 'topright' }
 ).addTo(map);
 
+var markerCluster = L.markerClusterGroup({
+  showCoverageOnHover: false,
+  spiderfyOnMaxZoom: true,
+  maxClusterRadius: 48,
+  iconCreateFunction: function(cluster) {
+    var count = cluster.getChildCount();
+    var size = count < 10 ? 34 : (count < 25 ? 42 : 50);
+    return L.divIcon({ html: '<div>' + count + '</div>', className: 'marker-cluster-custom',
+                        iconSize: L.point(size, size) });
+  }
+}).addTo(map);
+
+L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
+
+var FullscreenControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd: function() {
+    var btn = L.DomUtil.create('button', 'leaflet-bar fullscreen-btn');
+    btn.type = 'button';
+    btn.innerHTML = '&#9974;';
+    btn.title = 'Ecrã inteiro';
+    L.DomEvent.disableClickPropagation(btn);
+    L.DomEvent.on(btn, 'click', function() {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    });
+    return btn;
+  }
+});
+map.addControl(new FullscreenControl());
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 var markers        = [];
 var selectedMarker = null;
@@ -325,8 +487,14 @@ function makeIcon(color, selected, failed) {
           + '<path d="M10 0C5.8 0 2 3.8 2 8c0 6 8 16 8 16s8-10 8-16c0-4.2-3.8-8-8-8z"'
           + ' fill="'+(failed?'#888':color)+'" stroke="white" stroke-width="'+sw+'"/>'
           + inner + '</svg>';
+  var cls = 'marker-pin' + (selected ? ' marker-selected' : '');
   return L.divIcon({ html: svg, iconSize: [size*2, size*2.4],
-                     iconAnchor: [size, size*2.4], popupAnchor: [0, -(size*2)], className: '' });
+                     iconAnchor: [size, size*2.4], popupAnchor: [0, -(size*2)], className: cls });
+}
+
+function emojiDivIcon(emoji, color) {
+  var html = '<div class="cat-icon" style="background:' + color + '">' + emoji + '</div>';
+  return L.divIcon({ html: html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
 }
 
 // ─── MARKERS ─────────────────────────────────────────────────────────────────
@@ -334,12 +502,12 @@ function addMarker(rec) {
   var color  = PARISH_COLOR[rec.parish.toLowerCase()] || '#aaa';
   var failed = (rec.geoStatus === 'fallback');
   var marker = L.marker([rec.lat, rec.lon], { icon: makeIcon(color, false, failed) })
-    .addTo(map)
     .bindTooltip(rec.name, { permanent: false, direction: 'top' });
 
   var entry = { rec: rec, marker: marker, lat: rec.lat, lon: rec.lon,
                 status: rec.geoStatus || 'ok', visible: true };
   markers.push(entry);
+  markerCluster.addLayer(marker);
   marker.on('click', function() { openSidebar(entry); });
 }
 
@@ -354,7 +522,10 @@ function openSidebar(entry) {
   entry.marker.setIcon(makeIcon(pcolor, true, entry.status==='fallback'));
 
   document.getElementById('sidebar-placeholder').style.display = 'none';
-  document.getElementById('sidebar-content').style.display     = 'flex';
+  var sidebarContent = document.getElementById('sidebar-content');
+  sidebarContent.style.display = 'flex';
+  sidebarContent.style.opacity = '0';
+  requestAnimationFrame(function() { sidebarContent.style.opacity = '1'; });
   document.getElementById('sidebar-header').style.borderBottom = '3px solid ' + pcolor;
   document.getElementById('s-name').textContent       = entry.rec.name;
   document.getElementById('s-parish-sub').textContent = entry.rec.parish;
@@ -381,7 +552,14 @@ function openSidebar(entry) {
     statusEl.innerHTML = '<span class="geocode-ok">&#10003; Geocodificação exacta</span>';
   }
 
-  map.panTo([entry.lat, entry.lon], { animate: true });
+  var fly = function() {
+    map.flyTo([entry.lat, entry.lon], Math.max(map.getZoom(), 16), { animate: true, duration: 0.8 });
+  };
+  if (markerCluster.hasLayer(entry.marker)) {
+    markerCluster.zoomToShowLayer(entry.marker, fly);
+  } else {
+    fly();
+  }
 }
 
 function closeSidebar() {
@@ -403,8 +581,8 @@ function applyFilters() {
   markers.forEach(function(entry) {
     var ok = (!search || entry.rec.name.toLowerCase().indexOf(search) >= 0)
           && (!parish || entry.rec.parish === parish);
-    if (ok) { if (!map.hasLayer(entry.marker)) entry.marker.addTo(map); visible++; }
-    else    { if (map.hasLayer(entry.marker)) map.removeLayer(entry.marker); }
+    if (ok) { if (!markerCluster.hasLayer(entry.marker)) markerCluster.addLayer(entry.marker); visible++; }
+    else    { if (markerCluster.hasLayer(entry.marker)) markerCluster.removeLayer(entry.marker); }
     entry.visible = ok;
   });
 
@@ -491,14 +669,14 @@ var EXTRA_LAYERS = [
     },
     tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
   },
-  { key: 'bairros', label: 'Bairros', category: 'Concelho', color: '#f5c518', geom: 'polygon',
+  { key: 'bairros', label: 'Bairros', category: 'Concelho', color: '#c9982a', geom: 'polygon',
     data: BAIRROS_GEOJSON,
-    style: { color: '#f5c518', weight: 2, opacity: 0.9, dashArray: '6 4', fillColor: '#f5c518', fillOpacity: 0.12 },
+    style: { color: '#c9982a', weight: 2, opacity: 0.9, dashArray: '6 4', fillColor: '#c9982a', fillOpacity: 0.12 },
     tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.designacao) || '') + '</b>'; }
   },
-  { key: 'habitacao', label: 'Habitação Social', category: 'Concelho', color: '#e63946', geom: 'polygon',
+  { key: 'habitacao', label: 'Habitação Social', category: 'Concelho', color: '#b83227', geom: 'polygon',
     data: HABITACAO_SOCIAL_GEOJSON,
-    style: { color: '#e63946', weight: 2, opacity: 0.9, dashArray: '4 3', fillColor: '#e63946', fillOpacity: 0.18 },
+    style: { color: '#b83227', weight: 2, opacity: 0.9, dashArray: '4 3', fillColor: '#b83227', fillOpacity: 0.18 },
     tooltip: function(feat) {
       var p = feat.properties || {};
       return '<b>' + (p.descricao || '') + '</b>'
@@ -506,7 +684,7 @@ var EXTRA_LAYERS = [
         + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
     }
   },
-  { key: 'equipamentosLocal', label: 'Equipamentos', category: 'Concelho', color: '#4CC9F0', geom: 'point',
+  { key: 'equipamentosLocal', label: 'Equipamentos', category: 'Concelho', color: '#3d7a91', geom: 'point', emoji: '🏢',
     data: EQUIPAMENTOS_GEOJSON,
     tooltip: function(feat) {
       var p = feat.properties || {};
@@ -515,7 +693,7 @@ var EXTRA_LAYERS = [
         + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
     }
   },
-  { key: 'associacoesLocal', label: 'Associações', category: 'Concelho', color: '#FF924C', geom: 'point',
+  { key: 'associacoesLocal', label: 'Associações', category: 'Concelho', color: '#a15c2e', geom: 'point', emoji: '🤝',
     data: ASSOCIACOES_GEOJSON,
     tooltip: function(feat) {
       var p = feat.properties || {};
@@ -533,9 +711,9 @@ var EXTRA_LAYERS = [
         + (p.freguesia || '');
     }
   },
-  { key: 'bairrosPiloto', label: 'Bairros (Piloto)', category: 'Concelho', color: '#e67e22', geom: 'polygon',
+  { key: 'bairrosPiloto', label: 'Bairros (Piloto)', category: 'Concelho', color: '#c9722c', geom: 'polygon',
     data: ZONAS_VIZINHANCA_GEOJSON,
-    style: { color: '#e67e22', weight: 2, opacity: 0.9, dashArray: '3 3', fillColor: '#e67e22', fillOpacity: 0.15 },
+    style: { color: '#c9722c', weight: 2, opacity: 0.9, dashArray: '3 3', fillColor: '#c9722c', fillOpacity: 0.15 },
     tooltip: function(feat) {
       var p = feat.properties || {};
       var label = p.designacao || p.Designacao || p.DESIGNACAO || p.designação
@@ -544,27 +722,27 @@ var EXTRA_LAYERS = [
     }
   },
   // ── MOVES-IT layers (CMM ArcGIS server, injected via EXTRA_LAYERS_DATA) ──
-  { key: 'bairrosDigitais',      label: 'Bairros Digitais',                category: 'Bairro Digital', color: '#f5c518', geom: 'point',   data: EXTRA_LAYERS_DATA.bairrosDigitais },
-  { key: 'jardinsParques',       label: 'Jardins e Parques',               category: 'Verde & Azul',   color: '#2d6a4f', geom: 'point',   data: EXTRA_LAYERS_DATA.jardinsParques },
-  { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#4CC9F0', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
-  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#4895EF', geom: 'line',    data: EXTRA_LAYERS_DATA.hidrografia },
-  { key: 'baciasHidrograficas',  label: 'Bacias Hidrográficas',            category: 'Verde & Azul',   color: '#3A86FF', geom: 'polygon', data: EXTRA_LAYERS_DATA.baciasHidrograficas },
-  { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#588157', geom: 'point',   data: EXTRA_LAYERS_DATA.residuosVerdes },
-  { key: 'ecopontos',            label: 'Ecopontos',                       category: 'Verde & Azul',   color: '#40916C', geom: 'point',   data: EXTRA_LAYERS_DATA.ecopontos },
-  { key: 'equip3idade',          label: 'Equipamentos 3ª Idade',           category: 'Inclusão',       color: '#9d4edd', geom: 'point',   data: EXTRA_LAYERS_DATA.equip3idade },
-  { key: 'equipEscolares',       label: 'Equipamentos Escolares',          category: 'Inclusão',       color: '#f72585', geom: 'point',   data: EXTRA_LAYERS_DATA.equipEscolares },
-  { key: 'saude',                label: 'Saúde',                           category: 'Inclusão',       color: '#e63946', geom: 'point',   data: EXTRA_LAYERS_DATA.saude },
-  { key: 'educacao',             label: 'Educação',                        category: 'Inclusão',       color: '#ff8fa3', geom: 'point',   data: EXTRA_LAYERS_DATA.educacao },
-  { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#4895EF', geom: 'point',   data: EXTRA_LAYERS_DATA.desporto },
-  { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#e76f51', geom: 'point',   data: EXTRA_LAYERS_DATA.solidariedade },
-  { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#ff924c', geom: 'point',   data: EXTRA_LAYERS_DATA.cultura },
-  { key: 'patrimonioCultural',   label: 'Património Cultural Imóvel',      category: 'Cultura',        color: '#c9a227', geom: 'point',   data: EXTRA_LAYERS_DATA.patrimonioCultural },
-  { key: 'areasArqueologicas',   label: 'Áreas Arqueológicas',             category: 'Cultura',        color: '#a67c52', geom: 'polygon', data: EXTRA_LAYERS_DATA.areasArqueologicas },
-  { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#ffd60a', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro },
-  { key: 'estacoesMetro',        label: 'Estações de Metro',               category: 'Mobilidade',     color: '#ffd60a', geom: 'point',   data: EXTRA_LAYERS_DATA.estacoesMetro },
-  { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#ffc300', geom: 'point',   data: EXTRA_LAYERS_DATA.estacoesParagens },
-  { key: 'infraestruturaCiclavel',   label: 'Infraestrutura Ciclável',     category: 'Mobilidade',     color: '#52b788', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
-  { key: 'estacionamentoBicicletas', label: 'Estacionamento Bicicletas',   category: 'Mobilidade',     color: '#74c69d', geom: 'point',   data: EXTRA_LAYERS_DATA.estacionamentoBicicletas },
+  { key: 'bairrosDigitais',      label: 'Bairros Digitais',                category: 'Bairro Digital', color: '#b08a2e', geom: 'point',   emoji: '📶', data: EXTRA_LAYERS_DATA.bairrosDigitais },
+  { key: 'jardinsParques',       label: 'Jardins e Parques',               category: 'Verde & Azul',   color: '#3a7d44', geom: 'point',   emoji: '🌳', data: EXTRA_LAYERS_DATA.jardinsParques },
+  { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#2b6ca3', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
+  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#5b8fb0', geom: 'line',    data: EXTRA_LAYERS_DATA.hidrografia },
+  { key: 'baciasHidrograficas',  label: 'Bacias Hidrográficas',            category: 'Verde & Azul',   color: '#1e4d6b', geom: 'polygon', data: EXTRA_LAYERS_DATA.baciasHidrograficas },
+  { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#6b8e4e', geom: 'point',   emoji: '🌿', data: EXTRA_LAYERS_DATA.residuosVerdes },
+  { key: 'ecopontos',            label: 'Ecopontos',                       category: 'Verde & Azul',   color: '#4c7a3f', geom: 'point',   emoji: '♻️', data: EXTRA_LAYERS_DATA.ecopontos },
+  { key: 'equip3idade',          label: 'Equipamentos 3ª Idade',           category: 'Inclusão',       color: '#8467a8', geom: 'point',   emoji: '🧓', data: EXTRA_LAYERS_DATA.equip3idade },
+  { key: 'equipEscolares',       label: 'Equipamentos Escolares',          category: 'Inclusão',       color: '#c2508f', geom: 'point',   emoji: '🏫', data: EXTRA_LAYERS_DATA.equipEscolares },
+  { key: 'saude',                label: 'Saúde',                           category: 'Inclusão',       color: '#b8443c', geom: 'point',   emoji: '🏥', data: EXTRA_LAYERS_DATA.saude },
+  { key: 'educacao',             label: 'Educação',                        category: 'Inclusão',       color: '#d98a9e', geom: 'point',   emoji: '📚', data: EXTRA_LAYERS_DATA.educacao },
+  { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#3d6e99', geom: 'point',   emoji: '⚽', data: EXTRA_LAYERS_DATA.desporto },
+  { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#c76b3f', geom: 'point',   emoji: '🤲', data: EXTRA_LAYERS_DATA.solidariedade },
+  { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#b5773a', geom: 'point',   emoji: '🎭', data: EXTRA_LAYERS_DATA.cultura },
+  { key: 'patrimonioCultural',   label: 'Património Cultural Imóvel',      category: 'Cultura',        color: '#a8862f', geom: 'point',   emoji: '🏛️', data: EXTRA_LAYERS_DATA.patrimonioCultural },
+  { key: 'areasArqueologicas',   label: 'Áreas Arqueológicas',             category: 'Cultura',        color: '#8a6642', geom: 'polygon', data: EXTRA_LAYERS_DATA.areasArqueologicas },
+  { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#c9a227', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro },
+  { key: 'estacoesMetro',        label: 'Estações de Metro',               category: 'Mobilidade',     color: '#b8912a', geom: 'point',   emoji: '🚇', data: EXTRA_LAYERS_DATA.estacoesMetro },
+  { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#a67c1f', geom: 'point',   emoji: '🚌', data: EXTRA_LAYERS_DATA.estacoesParagens },
+  { key: 'infraestruturaCiclavel',   label: 'Infraestrutura Ciclável',     category: 'Mobilidade',     color: '#2f7a4d', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
+  { key: 'estacionamentoBicicletas', label: 'Estacionamento Bicicletas',   category: 'Mobilidade',     color: '#4d8f68', geom: 'point',   emoji: '🚲', data: EXTRA_LAYERS_DATA.estacionamentoBicicletas },
 ];
 var extraLayerState = {}; // key -> { layer: L.layer|null, on: bool }
 
@@ -573,6 +751,7 @@ function drawExtraLayer(cfg) {
   if (!data || !data.features || !data.features.length) return false;
   var layer = L.geoJSON(data, {
     pointToLayer: cfg.pointToLayer || function(feat, latlng) {
+      if (cfg.emoji) return L.marker(latlng, { icon: emojiDivIcon(cfg.emoji, cfg.color) });
       return L.circleMarker(latlng, {
         radius: 5, color: cfg.color, weight: 1.5, opacity: 1,
         fillColor: cfg.color, fillOpacity: 0.7
@@ -611,6 +790,25 @@ function toggleExtraLayer(key) {
     if (state.layer) { map.removeLayer(state.layer); state.layer = null; }
     state.on = false;
   }
+  updateActiveLayersLegend();
+}
+
+// Read-only summary of what's on — the checkboxes in the SELECIONAR CAMADAS
+// dropdown remain the single control surface; this list is not clickable.
+function updateActiveLayersLegend() {
+  var box  = document.getElementById('active-layers-section');
+  var list = document.getElementById('active-layers-list');
+  var active = EXTRA_LAYERS.filter(function(cfg) {
+    return extraLayerState[cfg.key] && extraLayerState[cfg.key].on;
+  });
+  if (!active.length) { box.style.display = 'none'; list.innerHTML = ''; return; }
+  var html = '';
+  active.forEach(function(cfg) {
+    html += '<div class="leg-row-static">'
+          + '<div class="leg-dot" style="background:' + cfg.color + '"></div>' + cfg.label + '</div>';
+  });
+  list.innerHTML = html;
+  box.style.display = 'block';
 }
 
 function buildLayersPanel() {
@@ -643,6 +841,16 @@ function toggleLayersPanel() {
   var isOpen = panel.style.display === 'block';
   panel.style.display = isOpen ? 'none' : 'block';
   btn.classList.toggle('active', !isOpen);
+  if (!isOpen) { panel.classList.remove('opening'); void panel.offsetWidth; panel.classList.add('opening'); }
+}
+
+function toggleAboutPanel() {
+  var panel = document.getElementById('about-panel');
+  var btn = document.getElementById('about-btn');
+  var isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('active', !isOpen);
+  if (!isOpen) { panel.classList.remove('opening'); void panel.offsetWidth; panel.classList.add('opening'); }
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
