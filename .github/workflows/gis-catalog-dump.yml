@@ -5,14 +5,19 @@ on:
   push:
     branches: [claude/gis-catalog-scratch]
 
+permissions:
+  contents: write
+
 jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Enumerate CMM ArcGIS Server catalog
         run: |
           python3 - << 'PYEOF'
-          import urllib.request, json, sys
+          import urllib.request, json
 
           BASES = [
               'https://infosig.cm-matosinhos.pt/server/rest/services',
@@ -79,14 +84,33 @@ jobs:
           with open('catalog.json', 'w', encoding='utf-8') as f:
               json.dump({'services': services, 'catalog': catalog}, f, ensure_ascii=False, indent=1)
 
-          print('--- CATALOG DUMP START ---', flush=True)
+          # Per-service counts summary
+          counts = {}
           for row in catalog:
-              print(f"{row['service']}|{row['type']}|{row['id']}|{row['name']}|{row['geom']}|{'table' if row['table'] else 'layer'}", flush=True)
-          print('--- CATALOG DUMP END ---', flush=True)
+              counts[row['service']] = counts.get(row['service'], 0) + 1
+
+          catalog_sorted = sorted(catalog, key=lambda r: (r['service'], r['id'] if r['id'] is not None else -1))
+
+          with open('catalog.md', 'w', encoding='utf-8') as f:
+              f.write(f'# CMM ArcGIS Server catalog\n\n')
+              f.write(f'{len(services)} services, {len(catalog)} layers/tables total.\n\n')
+              f.write('## Services (by layer count)\n\n')
+              f.write('| # | Service | Layers/Tables |\n|---|---|---|\n')
+              for i, (svc_name, cnt) in enumerate(sorted(counts.items(), key=lambda x: -x[1]), 1):
+                  f.write(f'| {i} | {svc_name} | {cnt} |\n')
+              f.write('\n## Full layer list\n\n')
+              f.write('| # | Service | ID | Name | Geometry | Kind |\n|---|---|---|---|---|---|\n')
+              for i, row in enumerate(catalog_sorted, 1):
+                  name = (row['name'] or '').replace('|', '/')
+                  f.write(f"| {i} | {row['service']} | {row['id']} | {name} | {row['geom']} | {'table' if row['table'] else 'layer'} |\n")
+
+          print('Wrote catalog.json and catalog.md', flush=True)
           PYEOF
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gis-catalog
-          path: catalog.json
-          retention-days: 1
+      - name: Commit and push catalog files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add catalog.json catalog.md
+          git commit -m "Update GIS catalog dump" || echo "No changes to commit"
+          git push
