@@ -24,7 +24,7 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
 #topbar h1 { font-family: 'Poppins','Inter',sans-serif; font-size: 15px; font-weight: 700; white-space: nowrap; color: #ffffff; line-height: 1.15; }
 #topbar h1 .subtitle { display: block; font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 500; opacity: 0.55; letter-spacing: 0.02em; }
 .brand-mark { display: flex; align-items: center; gap: 9px; }
-.brand-mark svg { flex-shrink: 0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
+.brand-logo { height: 28px; width: auto; flex-shrink: 0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
 .filter-group { display: flex; align-items: center; gap: 6px; }
 .filter-group label { font-size: 12px; opacity: 0.75; white-space: nowrap; }
 #topbar select {
@@ -149,9 +149,8 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
 #about-panel-header {
   display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;
 }
-#about-panel h2 {
-  font-family: 'Poppins','Inter',sans-serif; font-size: 17px; color: #fff; margin-bottom: 2px;
-}
+.about-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.about-logo { height: 48px; width: auto; }
 #about-panel .about-tag { font-size: 11px; opacity: 0.6; margin-bottom: 12px; }
 #about-panel .about-list, #about-panel .about-tracks { list-style: none; margin: 8px 0 14px; padding: 0; }
 #about-panel .about-list li, #about-panel .about-tracks li { padding: 5px 0 5px 16px; position: relative; }
@@ -222,12 +221,8 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
 
 <div id="topbar">
   <div class="brand-mark">
-    <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true">
-      <circle cx="14" cy="14" r="11" fill="#3a7d44" opacity="0.85"/>
-      <circle cx="22" cy="14" r="11" fill="#2b6ca3" opacity="0.85"/>
-      <circle cx="18" cy="23" r="11" fill="#b5773a" opacity="0.85"/>
-    </svg>
-    <h1>MOVES-IT<span class="subtitle">Mapeamento de participantes &mdash; Matosinhos</span></h1>
+    <img src="assets/logo-moves-it.png" alt="MOVES-IT" class="brand-logo">
+    <h1><span class="subtitle">Mapeamento de participantes &mdash; Matosinhos</span></h1>
   </div>
   <div class="filter-group"><label>&#128269; Nome</label>
     <input type="text" id="search-input" placeholder="pesquisar nome…"></div>
@@ -235,9 +230,15 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
     <select id="filter-parish">
       <option value="">Todas</option>
       <option value="Senhora da Hora">Senhora da Hora</option>
-      <option value="Matosinhos">Matosinhos</option>
+      <option value="Custóias">Custóias</option>
+      <option value="Guifões">Guifões</option>
       <option value="Leça do Balio">Leça do Balio</option>
+      <option value="Matosinhos">Matosinhos</option>
+      <option value="Leça da Palmeira">Leça da Palmeira</option>
+      <option value="São Mamede de Infesta">São Mamede de Infesta</option>
       <option value="Perafita">Perafita</option>
+      <option value="Lavra">Lavra</option>
+      <option value="Santa Cruz do Bispo">Santa Cruz do Bispo</option>
     </select></div>
   <button id="about-btn" onclick="toggleAboutPanel()">&#8505; Sobre</button>
   <button id="toggle-layers-panel" onclick="toggleLayersPanel()">&#128706; Selecionar Camadas</button>
@@ -255,8 +256,8 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
     </div>
     <div id="about-panel">
       <div id="about-panel-header">
-        <div>
-          <h2>MOVES-IT</h2>
+        <div class="about-brand">
+          <img src="assets/logo-moves-it.png" alt="MOVES-IT" class="about-logo">
           <div class="about-tag">Matosinhos &middot; Ações Urbanas Inovadoras (Comissão Europeia)</div>
         </div>
         <button id="about-panel-close" onclick="toggleAboutPanel()">&#10005;</button>
@@ -280,23 +281,23 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
       <div class="leg-row" data-parish="Senhora da Hora" onclick="toggleFilter('Senhora da Hora')">
         <div class="leg-dot" style="background:#FF595E"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
       <div class="leg-row" data-parish="Custóias" onclick="toggleFilter('Custóias')">
-        <div class="leg-dot" style="background:#FF924C"></div> Custóias</div>
+        <div class="leg-dot" style="background:#FF924C"></div> Custóias <span id="cnt-custoias"></span></div>
       <div class="leg-row" data-parish="Guifões" onclick="toggleFilter('Guifões')">
-        <div class="leg-dot" style="background:#FFCA3A"></div> Guifões</div>
+        <div class="leg-dot" style="background:#FFCA3A"></div> Guifões <span id="cnt-guifoes"></span></div>
       <div class="leg-row" data-parish="Leça do Balio" onclick="toggleFilter('Leça do Balio')">
         <div class="leg-dot" style="background:#8AC926"></div> Leça do Balio <span id="cnt-leca"></span></div>
       <div class="leg-row" data-parish="Matosinhos" onclick="toggleFilter('Matosinhos')">
         <div class="leg-dot" style="background:#1982C4"></div> Matosinhos <span id="cnt-mat"></span></div>
       <div class="leg-row" data-parish="Leça da Palmeira" onclick="toggleFilter('Leça da Palmeira')">
-        <div class="leg-dot" style="background:#6A4C93"></div> Leça da Palmeira</div>
+        <div class="leg-dot" style="background:#6A4C93"></div> Leça da Palmeira <span id="cnt-lpalmeira"></span></div>
       <div class="leg-row" data-parish="São Mamede de Infesta" onclick="toggleFilter('São Mamede de Infesta')">
-        <div class="leg-dot" style="background:#4CC9F0"></div> São Mamede de Infesta</div>
+        <div class="leg-dot" style="background:#4CC9F0"></div> São Mamede de Infesta <span id="cnt-smamede"></span></div>
       <div class="leg-row" data-parish="Perafita" onclick="toggleFilter('Perafita')">
         <div class="leg-dot" style="background:#F28482"></div> Perafita <span id="cnt-pera"></span></div>
       <div class="leg-row" data-parish="Lavra" onclick="toggleFilter('Lavra')">
-        <div class="leg-dot" style="background:#06D6A0"></div> Lavra</div>
+        <div class="leg-dot" style="background:#06D6A0"></div> Lavra <span id="cnt-lavra"></span></div>
       <div class="leg-row" data-parish="Santa Cruz do Bispo" onclick="toggleFilter('Santa Cruz do Bispo')">
-        <div class="leg-dot" style="background:#FB5607"></div> Santa Cruz do Bispo</div>
+        <div class="leg-dot" style="background:#FB5607"></div> Santa Cruz do Bispo <span id="cnt-scbispo"></span></div>
       <div id="active-layers-section">
         <b>Camadas ativas</b>
         <div id="active-layers-list"></div>
@@ -618,10 +619,14 @@ document.getElementById('filter-parish').addEventListener('change', function() {
 
 function updateCounts() {
   var cnt_ids = {
-    'senhora da hora': 'cnt-sdh', 'matosinhos': 'cnt-mat',
-    'leça do balio': 'cnt-leca', 'perafita': 'cnt-pera'
+    'senhora da hora': 'cnt-sdh',           'custóias': 'cnt-custoias',
+    'guifões': 'cnt-guifoes',               'leça do balio': 'cnt-leca',
+    'matosinhos': 'cnt-mat',                'leça da palmeira': 'cnt-lpalmeira',
+    'são mamede de infesta': 'cnt-smamede', 'perafita': 'cnt-pera',
+    'lavra': 'cnt-lavra',                   'santa cruz do bispo': 'cnt-scbispo'
   };
-  var counts = { 'senhora da hora': 0, 'matosinhos': 0, 'leça do balio': 0, 'perafita': 0 };
+  var counts = {};
+  Object.keys(cnt_ids).forEach(function(p) { counts[p] = 0; });
   markers.forEach(function(e) {
     var key = e.rec.parish.toLowerCase();
     if (counts[key] !== undefined) counts[key]++;
@@ -656,6 +661,25 @@ function pickLabel(props) {
     if (typeof props[k] === 'string' && props[k].trim()) return props[k];
   }
   return '';
+}
+
+// Shared tooltip for the AtividadesEconomicas "_PO" layers (saude, educacao, desporto,
+// cultura, solidariedade, hidrografia, linhaMetro). TEMA_PO is almost always the generic
+// literal "Sistemas Estruturantes" — never a useful label. The real name is whichever of
+// these is most specific for that row.
+function poTooltip(feat, fallbackLabel) {
+  var p = feat.properties || {};
+  var name = p['subespecificação_PO'] || p['especificações_PO'] || p['designação_PO'] || fallbackLabel;
+  var sub  = p['SUBTEMA_PO'] || '';
+  return '<b>' + String(name).trim() + '</b>' + (sub ? '<br><span style="opacity:.7">' + sub + '</span>' : '');
+}
+
+// Shared tooltip for AMB_LimpezaUrbana layers (residuosVerdes, ecopontos) — no name
+// field in this schema; build a readable label from material/type + address instead.
+function limpezaTooltip(feat, fallbackLabel) {
+  var p = feat.properties || {};
+  return '<b>' + (p.MATERIAL_RECOLHIDO || fallbackLabel) + '</b><br>'
+    + (p.MORADA || '') + (p.FREGUESIA ? ', ' + p.FREGUESIA : '');
 }
 
 var EXTRA_LAYERS = [
@@ -724,24 +748,50 @@ var EXTRA_LAYERS = [
   // ── MOVES-IT layers (CMM ArcGIS server, injected via EXTRA_LAYERS_DATA) ──
   { key: 'bairrosDigitais',      label: 'Bairros Digitais',                category: 'Bairro Digital', color: '#b08a2e', geom: 'point',   emoji: '📶', data: EXTRA_LAYERS_DATA.bairrosDigitais },
   { key: 'jardinsParques',       label: 'Jardins e Parques',               category: 'Verde & Azul',   color: '#3a7d44', geom: 'point',   emoji: '🌳', data: EXTRA_LAYERS_DATA.jardinsParques },
-  { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#2b6ca3', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
-  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#5b8fb0', geom: 'line',    data: EXTRA_LAYERS_DATA.hidrografia },
+  { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#1d6fa5', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
+  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#8e44ad', geom: 'line',    data: EXTRA_LAYERS_DATA.hidrografia,
+    tooltip: function(feat) { return poTooltip(feat, 'Hidrografia'); }
+  },
   { key: 'baciasHidrograficas',  label: 'Bacias Hidrográficas',            category: 'Verde & Azul',   color: '#1e4d6b', geom: 'polygon', data: EXTRA_LAYERS_DATA.baciasHidrograficas },
-  { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#6b8e4e', geom: 'point',   emoji: '🌿', data: EXTRA_LAYERS_DATA.residuosVerdes },
-  { key: 'ecopontos',            label: 'Ecopontos',                       category: 'Verde & Azul',   color: '#4c7a3f', geom: 'point',   emoji: '♻️', data: EXTRA_LAYERS_DATA.ecopontos },
+  { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#6b8e4e', geom: 'point',   emoji: '🌿', data: EXTRA_LAYERS_DATA.residuosVerdes,
+    tooltip: function(feat) { return limpezaTooltip(feat, 'Resíduos Verdes'); }
+  },
+  { key: 'ecopontos',            label: 'Ecopontos',                       category: 'Verde & Azul',   color: '#4c7a3f', geom: 'point',   emoji: '♻️', data: EXTRA_LAYERS_DATA.ecopontos,
+    tooltip: function(feat) { return limpezaTooltip(feat, 'Ecopontos'); }
+  },
   { key: 'equip3idade',          label: 'Equipamentos 3ª Idade',           category: 'Inclusão',       color: '#8467a8', geom: 'point',   emoji: '🧓', data: EXTRA_LAYERS_DATA.equip3idade },
   { key: 'equipEscolares',       label: 'Equipamentos Escolares',          category: 'Inclusão',       color: '#c2508f', geom: 'point',   emoji: '🏫', data: EXTRA_LAYERS_DATA.equipEscolares },
-  { key: 'saude',                label: 'Saúde',                           category: 'Inclusão',       color: '#b8443c', geom: 'point',   emoji: '🏥', data: EXTRA_LAYERS_DATA.saude },
-  { key: 'educacao',             label: 'Educação',                        category: 'Inclusão',       color: '#d98a9e', geom: 'point',   emoji: '📚', data: EXTRA_LAYERS_DATA.educacao },
-  { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#3d6e99', geom: 'point',   emoji: '⚽', data: EXTRA_LAYERS_DATA.desporto },
-  { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#c76b3f', geom: 'point',   emoji: '🤲', data: EXTRA_LAYERS_DATA.solidariedade },
-  { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#b5773a', geom: 'point',   emoji: '🎭', data: EXTRA_LAYERS_DATA.cultura },
+  { key: 'saude',                label: 'Saúde',                           category: 'Inclusão',       color: '#b8443c', geom: 'point',   emoji: '🏥', data: EXTRA_LAYERS_DATA.saude,
+    tooltip: function(feat) { return poTooltip(feat, 'Saúde'); }
+  },
+  { key: 'educacao',             label: 'Educação',                        category: 'Inclusão',       color: '#d98a9e', geom: 'point',   emoji: '📚', data: EXTRA_LAYERS_DATA.educacao,
+    tooltip: function(feat) { return poTooltip(feat, 'Educação'); }
+  },
+  { key: 'desporto',             label: 'Desporto',                        category: 'Inclusão',       color: '#3d6e99', geom: 'point',   emoji: '⚽', data: EXTRA_LAYERS_DATA.desporto,
+    tooltip: function(feat) { return poTooltip(feat, 'Desporto'); }
+  },
+  { key: 'solidariedade',        label: 'Solidariedade e Segurança Social', category: 'Inclusão',      color: '#c76b3f', geom: 'point',   emoji: '🤲', data: EXTRA_LAYERS_DATA.solidariedade,
+    tooltip: function(feat) { return poTooltip(feat, 'Solidariedade e Segurança Social'); }
+  },
+  { key: 'cultura',              label: 'Cultura',                         category: 'Cultura',        color: '#b5773a', geom: 'point',   emoji: '🎭', data: EXTRA_LAYERS_DATA.cultura,
+    tooltip: function(feat) { return poTooltip(feat, 'Cultura'); }
+  },
   { key: 'patrimonioCultural',   label: 'Património Cultural Imóvel',      category: 'Cultura',        color: '#a8862f', geom: 'point',   emoji: '🏛️', data: EXTRA_LAYERS_DATA.patrimonioCultural },
   { key: 'areasArqueologicas',   label: 'Áreas Arqueológicas',             category: 'Cultura',        color: '#8a6642', geom: 'polygon', data: EXTRA_LAYERS_DATA.areasArqueologicas },
-  { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#c9a227', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro },
+  { key: 'linhaMetro',           label: 'Linha de Metro Existente',        category: 'Mobilidade',     color: '#d7263d', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro,
+    tooltip: function(feat) { return poTooltip(feat, 'Linha de Metro Existente'); }
+  },
   { key: 'estacoesMetro',        label: 'Estações de Metro',               category: 'Mobilidade',     color: '#b8912a', geom: 'point',   emoji: '🚇', data: EXTRA_LAYERS_DATA.estacoesMetro },
-  { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#a67c1f', geom: 'point',   emoji: '🚌', data: EXTRA_LAYERS_DATA.estacoesParagens },
-  { key: 'infraestruturaCiclavel',   label: 'Infraestrutura Ciclável',     category: 'Mobilidade',     color: '#2f7a4d', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
+  { key: 'estacoesParagens',     label: 'Estações e Paragens',             category: 'Mobilidade',     color: '#a67c1f', geom: 'point',   emoji: '🚌', data: EXTRA_LAYERS_DATA.estacoesParagens,
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      var label = 'Paragem';
+      if (p.Rede) label += ' — ' + p.Rede;
+      if (p.Tipo) label += ' (' + p.Tipo + ')';
+      return '<b>' + label + '</b>';
+    }
+  },
+  { key: 'infraestruturaCiclavel',   label: 'Infraestrutura Ciclável',     category: 'Mobilidade',     color: '#d35400', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
   { key: 'estacionamentoBicicletas', label: 'Estacionamento Bicicletas',   category: 'Mobilidade',     color: '#4d8f68', geom: 'point',   emoji: '🚲', data: EXTRA_LAYERS_DATA.estacionamentoBicicletas },
 ];
 var extraLayerState = {}; // key -> { layer: L.layer|null, on: bool }
