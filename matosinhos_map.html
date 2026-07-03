@@ -643,10 +643,64 @@ function updateCounts() {
 // `data` directly (either a locally-injected GeoJSON var, or an entry from
 // EXTRA_LAYERS_DATA for the CMM-server layers); `style`/`tooltip`/`pointToLayer`
 // are optional per-entry overrides, falling back to sensible generic defaults.
-function parishColorFor(nome) {
+var PARISH_CANONICAL = {
+  'senhora da hora': 'Senhora da Hora', 'custóias': 'Custóias', 'guifões': 'Guifões',
+  'leça do balio': 'Leça do Balio', 'matosinhos': 'Matosinhos', 'leça da palmeira': 'Leça da Palmeira',
+  'são mamede de infesta': 'São Mamede de Infesta', 'perafita': 'Perafita',
+  'lavra': 'Lavra', 'santa cruz do bispo': 'Santa Cruz do Bispo'
+};
+
+function normalizeParishKey(nome) {
   var norm = (nome || '').toLowerCase();
   if (norm === 's. mamede de infesta') norm = 'são mamede de infesta'; // GDB abbreviation
-  return PARISH_COLOR[norm] || '#888';
+  return norm;
+}
+
+function parishColorFor(nome) {
+  return PARISH_COLOR[normalizeParishKey(nome)] || '#888';
+}
+
+// Ray-casting point-in-polygon (even-odd rule), used to color/label each resident by the
+// parish polygon their coordinates actually fall inside, rather than trusting a possibly
+// stale/incorrect stored "parish" field.
+function pointInRing(lon, lat, ring) {
+  var inside = false;
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    var xi = ring[i][0], yi = ring[i][1];
+    var xj = ring[j][0], yj = ring[j][1];
+    var intersect = ((yi > lat) !== (yj > lat)) &&
+      (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInPolygonGeom(lon, lat, geom) {
+  if (!geom) return false;
+  if (geom.type === 'Polygon') {
+    if (!pointInRing(lon, lat, geom.coordinates[0])) return false;
+    for (var h = 1; h < geom.coordinates.length; h++) {
+      if (pointInRing(lon, lat, geom.coordinates[h])) return false;
+    }
+    return true;
+  }
+  if (geom.type === 'MultiPolygon') {
+    return geom.coordinates.some(function(poly) {
+      return pointInPolygonGeom(lon, lat, { type: 'Polygon', coordinates: poly });
+    });
+  }
+  return false;
+}
+
+function resolveParishByLocation(lat, lon) {
+  for (var key in BOUNDARY_GEOJSON) {
+    var feat = BOUNDARY_GEOJSON[key];
+    if (feat && feat.geometry && pointInPolygonGeom(lon, lat, feat.geometry)) {
+      var normKey = normalizeParishKey(feat.properties && feat.properties.nome);
+      return PARISH_CANONICAL[normKey] || (feat.properties && feat.properties.nome) || null;
+    }
+  }
+  return null;
 }
 
 function pickLabel(props) {
@@ -684,7 +738,7 @@ function limpezaTooltip(feat, fallbackLabel) {
 
 var EXTRA_LAYERS = [
   // ── Concelho (previously flat topbar buttons) ──
-  { key: 'boundaries', label: 'Limites (Freguesias)', category: 'Concelho', color: '#66c896',
+  { key: 'boundaries', label: 'Limites (Freguesias)', category: 'Concelho', color: '#66c896', zPriority: 0,
     data: { type: 'FeatureCollection',
             features: Object.keys(BOUNDARY_GEOJSON).map(function(k) { return BOUNDARY_GEOJSON[k]; }) },
     style: function(feat) {
@@ -693,7 +747,7 @@ var EXTRA_LAYERS = [
     },
     tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
   },
-  { key: 'bairros', label: 'Bairros', category: 'Concelho', color: '#c9982a', geom: 'polygon',
+  { key: 'bairros', label: 'Bairros', category: 'Concelho', color: '#c9982a', geom: 'polygon', zPriority: 1,
     data: BAIRROS_GEOJSON,
     style: { color: '#c9982a', weight: 2, opacity: 0.9, dashArray: '6 4', fillColor: '#c9982a', fillOpacity: 0.12 },
     tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.designacao) || '') + '</b>'; }
@@ -708,7 +762,7 @@ var EXTRA_LAYERS = [
         + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
     }
   },
-  { key: 'equipamentosLocal', label: 'Equipamentos', category: 'Concelho', color: '#3d7a91', geom: 'point', emoji: '🏢',
+  { key: 'equipamentosLocal', label: 'Equipamentos (Total)', category: 'Inclusão', color: '#3d7a91', geom: 'point', emoji: '🏢',
     data: EQUIPAMENTOS_GEOJSON,
     tooltip: function(feat) {
       var p = feat.properties || {};
@@ -717,7 +771,7 @@ var EXTRA_LAYERS = [
         + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
     }
   },
-  { key: 'associacoesLocal', label: 'Associações', category: 'Concelho', color: '#a15c2e', geom: 'point', emoji: '🤝',
+  { key: 'associacoesLocal', label: 'Associações', category: 'Inclusão', color: '#a15c2e', geom: 'point', emoji: '🤝',
     data: ASSOCIACOES_GEOJSON,
     tooltip: function(feat) {
       var p = feat.properties || {};
@@ -725,7 +779,7 @@ var EXTRA_LAYERS = [
         + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
     }
   },
-  { key: 'areasVerdes', label: 'Áreas Verdes', category: 'Concelho', color: '#2d6a4f', geom: 'polygon',
+  { key: 'areasVerdes', label: 'Áreas Verdes', category: 'Verde & Azul', color: '#2d6a4f', geom: 'polygon',
     data: AREAS_AJARDINADAS_GEOJSON,
     style: { color: '#2d6a4f', weight: 1.5, opacity: 0.9, fillColor: '#2d6a4f', fillOpacity: 0.25 },
     tooltip: function(feat) {
@@ -735,7 +789,7 @@ var EXTRA_LAYERS = [
         + (p.freguesia || '');
     }
   },
-  { key: 'bairrosPiloto', label: 'Bairros (Piloto)', category: 'Concelho', color: '#c9722c', geom: 'polygon',
+  { key: 'bairrosPiloto', label: 'Bairros (Piloto)', category: 'Concelho', color: '#c9722c', geom: 'polygon', zPriority: 2,
     data: ZONAS_VIZINHANCA_GEOJSON,
     style: { color: '#c9722c', weight: 2, opacity: 0.9, dashArray: '3 3', fillColor: '#c9722c', fillOpacity: 0.15 },
     tooltip: function(feat) {
@@ -749,9 +803,6 @@ var EXTRA_LAYERS = [
   { key: 'bairrosDigitais',      label: 'Bairros Digitais',                category: 'Bairro Digital', color: '#b08a2e', geom: 'point',   emoji: '📶', data: EXTRA_LAYERS_DATA.bairrosDigitais },
   { key: 'jardinsParques',       label: 'Jardins e Parques',               category: 'Verde & Azul',   color: '#3a7d44', geom: 'point',   emoji: '🌳', data: EXTRA_LAYERS_DATA.jardinsParques },
   { key: 'redeHidrografica',     label: 'Rede Hidrográfica',               category: 'Verde & Azul',   color: '#1d6fa5', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
-  { key: 'hidrografia',          label: 'Hidrografia',                     category: 'Verde & Azul',   color: '#8e44ad', geom: 'line',    data: EXTRA_LAYERS_DATA.hidrografia,
-    tooltip: function(feat) { return poTooltip(feat, 'Hidrografia'); }
-  },
   { key: 'baciasHidrograficas',  label: 'Bacias Hidrográficas',            category: 'Verde & Azul',   color: '#1e4d6b', geom: 'polygon', data: EXTRA_LAYERS_DATA.baciasHidrograficas },
   { key: 'residuosVerdes',       label: 'Resíduos Verdes',                 category: 'Verde & Azul',   color: '#6b8e4e', geom: 'point',   emoji: '🌿', data: EXTRA_LAYERS_DATA.residuosVerdes,
     tooltip: function(feat) { return limpezaTooltip(feat, 'Resíduos Verdes'); }
@@ -840,7 +891,27 @@ function toggleExtraLayer(key) {
     if (state.layer) { map.removeLayer(state.layer); state.layer = null; }
     state.on = false;
   }
+  reapplyLayerStacking();
   updateActiveLayersLegend();
+}
+
+// Wide "context" polygons (parish limits, bairros, pilot zones) must always render behind
+// more specific thematic layers, or their fill blocks hover/tooltip access to what's under
+// them — bug seen with "Limites (Freguesias)" toggled after "Habitação Social". Re-applied on
+// every toggle so the result is deterministic regardless of click order.
+function effectiveZPriority(cfg) {
+  if (cfg.zPriority != null) return cfg.zPriority;
+  if (cfg.geom === 'polygon') return 10;
+  if (cfg.geom === 'line') return 20;
+  return 30;
+}
+
+function reapplyLayerStacking() {
+  var active = EXTRA_LAYERS.filter(function(cfg) {
+    return extraLayerState[cfg.key] && extraLayerState[cfg.key].on && extraLayerState[cfg.key].layer;
+  });
+  active.sort(function(a, b) { return effectiveZPriority(a) - effectiveZPriority(b); });
+  active.forEach(function(cfg) { extraLayerState[cfg.key].layer.bringToFront(); });
 }
 
 // Read-only summary of what's on — the checkboxes in the SELECIONAR CAMADAS
@@ -905,6 +976,10 @@ function toggleAboutPanel() {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function initMap() {
+  ADDRESSES.forEach(function(rec) {
+    var resolved = resolveParishByLocation(rec.lat, rec.lon);
+    if (resolved) rec.parish = resolved;
+  });
   ADDRESSES.forEach(function(rec) { addMarker(rec); });
   updateCounts();
   applyFilters();

@@ -202,7 +202,6 @@ jobs:
               'desporto':            [f'{SERVER}/AtividadesEconomicas/MapServer/7'],
               'cultura':             [f'{SERVER}/AtividadesEconomicas/MapServer/8'],
               'solidariedade':       [f'{SERVER}/AtividadesEconomicas/MapServer/9'],
-              'hidrografia':         [f'{SERVER}/AtividadesEconomicas/MapServer/10'],
               'linhaMetro':          [f'{SERVER}/AtividadesEconomicas/MapServer/24'],
               'estacoesMetro':       [f'{SERVER}/AtividadesEconomicas/MapServer/155'],
               'estacoesParagens':    [f'{ARCGIS}/CARTAHABIT_1Diagnostico/MapServer/1'],
