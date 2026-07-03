@@ -217,6 +217,28 @@ jobs:
               r'^(OBJECTID|OBJECTID_\d+|GlobalID|Shape__Length|Shape__Area|'
               r'Shape\.ST(Length|Area)\(\)|SHAPE\.ST(Length|Area)\(\))$', re.IGNORECASE)
 
+          # Per-feature filters for layers whose ArcGIS source mixes in rows that shouldn't be
+          # shown as-is. Keyed by LAYERS key; value is a predicate over a feature's `properties`
+          # dict — keep the feature if it returns True. Fail open: if neither expected field is
+          # present on a feature, keep it rather than risk silently dropping everything.
+          def _estacoes_metro_existente(p):
+              if 'OBSERVACOES' in p:
+                  return p.get('OBSERVACOES') == 'Existente'
+              if 'ESTADO_BD' in p:
+                  return p.get('ESTADO_BD') == 1
+              return True
+
+          FEATURE_FILTERS = {
+              # AtividadesEconomicas/155 is titled "Estações de Metro Existentes" at the source,
+              # but still contains some non-existing entries (per user report) — the per-feature
+              # OBSERVACOES/ESTADO_BD fields are the real ground truth, not the layer's aggregate
+              # name. Sibling /157 ("Estações de Metro Projetadas") holds planned stations, which
+              # we deliberately don't embed. If MOB_MetroDoPorto/0 ("Estações de Metro") ever
+              # looks like a cleaner source, it's a candidate replacement — schema unverified,
+              # not adopted here.
+              'estacoesMetro': _estacoes_metro_existente,
+          }
+
           def round_coords(coords):
               if isinstance(coords, (int, float)):
                   return round(coords, 6)
@@ -248,6 +270,19 @@ jobs:
               feats = []
               for u in urls:
                   feats.extend(fetch_features(u))
+              filt = FEATURE_FILTERS.get(key)
+              if filt:
+                  before = len(feats)
+                  kept    = [f for f in feats if filt(f.get('properties') or {})]
+                  dropped = [f for f in feats if f not in kept]
+                  if kept:
+                      feats = kept
+                      if dropped:
+                          names = [d['properties'].get('DESIGNACAO', '?') for d in dropped]
+                          print(f'  {key}: filtered {before} -> {len(feats)} features '
+                                f'(dropped: {", ".join(names)})', flush=True)
+                  else:
+                      print(f'  ⚠ {key}: filter would drop all {before} features — keeping unfiltered', flush=True)
               result[key] = {'type': 'FeatureCollection', 'features': feats}
               total_feats += len(feats)
               if feats:
