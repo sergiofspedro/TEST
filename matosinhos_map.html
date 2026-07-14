@@ -747,6 +747,16 @@ var EXTRA_LAYERS = [
     },
     tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
   },
+  { key: 'boundariesSelecao', label: 'Limites (4 Freguesias)', category: 'Concelho', color: '#5c4d7d', zPriority: 0,
+    data: { type: 'FeatureCollection',
+            features: ['perafita', 'senhora da hora', 'matosinhos', 'leça do balio']
+              .map(function(k) { return BOUNDARY_GEOJSON[k]; }).filter(Boolean) },
+    style: function(feat) {
+      var c = parishColorFor(feat.properties && feat.properties.nome);
+      return { color: c, weight: 2.5, opacity: 0.9, fillColor: c, fillOpacity: 0.22 };
+    },
+    tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
+  },
   { key: 'bairros', label: 'Bairros', category: 'Concelho', color: '#c9982a', geom: 'polygon', zPriority: 1,
     data: BAIRROS_GEOJSON,
     style: { color: '#c9982a', weight: 2, opacity: 0.9, dashArray: '6 4', fillColor: '#c9982a', fillOpacity: 0.12 },
