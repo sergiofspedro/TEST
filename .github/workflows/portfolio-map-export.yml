@@ -2,12 +2,14 @@ name: Portfolio map export (temporary, throwaway)
 
 # One-off helper: populates portfolio_map_template.html with the same real GIS
 # data pages.yml injects into matosinhos_map.html, then commits the result back
-# to whatever branch this ran on. Manual dispatch only — never runs on push, and
-# is not part of the site's normal deploy. Delete this file (and the throwaway
-# branch it lives on) once the populated file has been read back.
+# to whatever branch this ran on. Scoped to this throwaway branch only — not
+# part of the site's normal deploy. Delete this file (and the throwaway branch
+# it lives on) once the populated file has been read back.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [portfolio-export-temp]
 
 permissions:
   contents: write
