@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOVES-IT participants mapping</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
+
+#topbar {
+  background: #16213e; color: #e0e0e0; padding: 10px 16px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 1000;
+}
+#topbar h1 { font-family: 'Poppins','Inter',sans-serif; font-size: 15px; font-weight: 700; white-space: nowrap; color: #ffffff; line-height: 1.15; }
+#topbar h1 .subtitle { display: block; font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 500; opacity: 0.55; letter-spacing: 0.02em; }
+.brand-mark { display: flex; align-items: center; gap: 9px; }
+.brand-logo { height: 28px; width: auto; flex-shrink: 0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-group label { font-size: 12px; opacity: 0.75; white-space: nowrap; }
+#topbar select {
+  font-size: 12px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px; background: rgba(255,255,255,0.1); color: #e0e0e0; cursor: pointer; outline: none;
+}
+#topbar select option { color: #222; background: white; }
+#topbar input[type=text] {
+  font-size: 12px; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px; background: rgba(255,255,255,0.1); color: #e0e0e0; width: 170px; outline: none;
+}
+#topbar input::placeholder { color: rgba(255,255,255,0.4); }
+#match-count { font-size: 12px; opacity: 0.65; white-space: nowrap; }
+#clear-btn {
+  margin-left: auto; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.25); color: #e0e0e0;
+  padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+#clear-btn:hover { background: rgba(255,255,255,0.2); }
+#main { display: flex; flex: 1; overflow: hidden; }
+#map  { flex: 1; z-index: 1; position: relative; overflow: hidden; }
+
+#sidebar {
+  width: 340px; min-width: 340px; background: #1a1a2e; color: #e0e0e0;
+  overflow-y: auto; box-shadow: -3px 0 12px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; z-index: 2;
+}
+#sidebar-placeholder {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 32px 20px; text-align: center; color: #555;
+}
+#sidebar-placeholder svg { margin-bottom: 14px; }
+#sidebar-placeholder p { font-size: 13px; line-height: 1.6; }
+#sidebar-content { display: none; flex-direction: column; flex: 1; transition: opacity 0.25s ease; }
+#sidebar-header {
+  padding: 14px 16px 12px; position: sticky; top: 0; z-index: 10; position: relative;
+  background: #16213e;
+}
+#sidebar-header h2 { font-family: 'Poppins','Inter',sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 2px; color: #fff; }
+#sidebar-header .sub { font-size: 12px; opacity: 0.65; }
+#sidebar-close {
+  position: absolute; top: 10px; right: 12px;
+  background: rgba(255,255,255,0.1); border: none; color: #e0e0e0;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  font-size: 14px; line-height: 26px; text-align: center;
+}
+#sidebar-close:hover { background: rgba(255,255,255,0.25); }
+#sidebar-body { padding: 12px 14px; flex: 1; }
+.parish-badge {
+  display: inline-block; padding: 3px 12px; border-radius: 12px;
+  font-size: 11px; font-weight: bold; color: white; margin-bottom: 12px;
+}
+.info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 0; border-top: 1px solid #2a2a4a; }
+.info-grid dt {
+  background: #0f0f23; font-size: 11px; font-weight: bold; color: #aaa;
+  padding: 7px 10px; border-bottom: 1px solid #2a2a4a;
+}
+.info-grid dd { font-size: 12px; color: #ddd; padding: 7px 10px; border-bottom: 1px solid #2a2a4a; word-break: break-word; }
+.geocode-status { font-size: 11px; margin-top: 8px; }
+.geocode-ok    { color: #4caf50; }
+.geocode-fail  { color: #f44336; }
+.geocode-approx { color: #ff9800; }
+
+#legend {
+  position: absolute; bottom: 30px; left: 16px; z-index: 500;
+  background: rgba(22,33,62,0.95); padding: 10px 14px; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-size: 12px; color: #e0e0e0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+#legend b { display: block; margin-bottom: 8px; color: #fff; font-size: 12px; font-family: 'Poppins','Inter',sans-serif; }
+.leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; transition: opacity 0.2s ease; }
+.leg-row:hover { opacity: 0.75; }
+.leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
+.leg-row.dim { opacity: 0.35; }
+#active-layers-section { display: none; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,0.15); }
+#active-layers-section b { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.7; margin-bottom: 7px; }
+.leg-row-static { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11.5px; }
+
+#no-results {
+  display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); background: rgba(22,33,62,0.95);
+  padding: 16px 24px; border-radius: 8px; font-size: 14px; color: #aaa;
+  z-index: 400; text-align: center; border: 1px solid rgba(255,255,255,0.1);
+}
+
+#toggle-layers-panel, #about-btn {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+  color: #e0e0e0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#toggle-layers-panel:hover, #about-btn:hover { background: rgba(255,255,255,0.18); }
+#toggle-layers-panel.active, #about-btn.active { background: rgba(158,127,221,0.3); border-color: rgba(158,127,221,0.65); }
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+#layers-panel.opening, #about-panel.opening { animation: panelIn 0.18s ease-out; }
+
+#layers-panel {
+  display: none; position: absolute; top: 12px; right: 12px; z-index: 900;
+  background: rgba(22,33,62,0.97); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 12px 14px; width: 270px; max-height: 75vh; overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5); font-size: 12px; color: #e0e0e0;
+}
+#layers-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: bold; margin-bottom: 10px; color: #fff; font-size: 13px;
+  font-family: 'Poppins','Inter',sans-serif;
+}
+#layers-panel-close, #about-panel-close {
+  background: rgba(255,255,255,0.1); border: none; color: #e0e0e0;
+  width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 11px;
+}
+
+#about-panel {
+  display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900;
+  background: rgba(22,33,62,0.97); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; padding: 18px 20px; width: min(420px, 88vw); max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55); font-size: 12.5px; color: #d8d8e6; line-height: 1.55;
+}
+#about-panel-header {
+  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;
+}
+.about-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.about-logo { height: 48px; width: auto; }
+#about-panel .about-tag { font-size: 11px; opacity: 0.6; margin-bottom: 12px; }
+#about-panel .about-list, #about-panel .about-tracks { list-style: none; margin: 8px 0 14px; padding: 0; }
+#about-panel .about-list li, #about-panel .about-tracks li { padding: 5px 0 5px 16px; position: relative; }
+#about-panel .about-list li::before, #about-panel .about-tracks li::before {
+  content: ''; position: absolute; left: 0; top: 11px; width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+}
+#about-panel .about-tracks li:nth-child(1)::before { background: #3a7d44; }
+#about-panel .about-tracks li:nth-child(2)::before { background: #2b6ca3; }
+#about-panel .about-tracks li:nth-child(3)::before { background: #b5773a; }
+#about-panel a { color: #b8a4e8; }
+#about-panel .about-link {
+  display: inline-block; margin-top: 12px; font-size: 11.5px; color: #b8a4e8; text-decoration: none;
+}
+#about-panel .about-link:hover { text-decoration: underline; }
+.layer-category { margin-bottom: 12px; }
+.layer-category b {
+  display: block; margin-bottom: 6px; color: #fff; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.7;
+}
+.layer-check { display: flex; align-items: center; gap: 7px; padding: 3px 0; cursor: pointer; }
+.layer-check input { cursor: pointer; }
+.layer-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3); }
+.layer-nd { opacity: 0.55; font-size: 10px; margin-left: auto; white-space: nowrap; }
+
+/* category icons for extra-layer point markers */
+.cat-icon {
+  width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; line-height: 1; box-shadow: 0 1px 5px rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.85);
+}
+
+/* resident marker select animation */
+.marker-pin { transition: filter 0.15s ease; }
+.marker-pin.marker-selected { animation: pinPop 0.32s ease; }
+@keyframes pinPop {
+  0%   { transform: scale(0.65); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* marker cluster bubbles, styled to match the dark theme */
+.marker-cluster-custom {
+  background: transparent !important;
+}
+.marker-cluster-custom div {
+  width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 32% 28%, #b8a4e8, #6a4c93 70%);
+  color: #fff; font-family: 'Poppins','Inter',sans-serif; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 3px rgba(158,127,221,0.25);
+  border: 2px solid rgba(255,255,255,0.85);
+}
+
+.fullscreen-btn {
+  font-size: 16px !important; line-height: 26px !important; width: 26px; height: 26px;
+  background: #fff; color: #333; text-align: center; cursor: pointer; display: block;
+}
+.fullscreen-btn:hover { background: #f4f4f4; }
+
+#footer {
+  flex-shrink: 0; background: #12172b; color: rgba(224,224,224,0.55); font-size: 11px;
+  padding: 6px 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.08);
+}
+#footer a { color: rgba(184,164,232,0.9); text-decoration: none; margin-left: 6px; }
+#footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand-mark">
+    <img src="assets/logo-moves-it.png" alt="MOVES-IT" class="brand-logo">
+    <h1><span class="subtitle">Participant mapping &mdash; Matosinhos</span></h1>
+  </div>
+  <div class="filter-group"><label>&#128269; Name</label>
+    <input type="text" id="search-input" placeholder="search name…"></div>
+  <div class="filter-group"><label>Parish</label>
+    <select id="filter-parish">
+      <option value="">All</option>
+      <option value="Senhora da Hora">Senhora da Hora</option>
+      <option value="Custóias">Custóias</option>
+      <option value="Guifões">Guifões</option>
+      <option value="Leça do Balio">Leça do Balio</option>
+      <option value="Matosinhos">Matosinhos</option>
+      <option value="Leça da Palmeira">Leça da Palmeira</option>
+      <option value="São Mamede de Infesta">São Mamede de Infesta</option>
+      <option value="Perafita">Perafita</option>
+      <option value="Lavra">Lavra</option>
+      <option value="Santa Cruz do Bispo">Santa Cruz do Bispo</option>
+    </select></div>
+  <button id="about-btn" onclick="toggleAboutPanel()">&#8505; About</button>
+  <button id="toggle-layers-panel" onclick="toggleLayersPanel()">&#128706; Select Layers</button>
+  <span id="match-count"></span>
+  <button id="clear-btn" onclick="clearAll()">&#10005; Clear</button>
+</div>
+
+<div id="main">
+  <div id="map">
+    <div id="layers-panel">
+      <div id="layers-panel-header">SELECT LAYERS
+        <button id="layers-panel-close" onclick="toggleLayersPanel()">&#10005;</button>
+      </div>
+      <div id="layers-panel-body"></div>
+    </div>
+    <div id="about-panel">
+      <div id="about-panel-header">
+        <div class="about-brand">
+          <img src="assets/logo-moves-it.png" alt="MOVES-IT" class="about-logo">
+          <div class="about-tag">Matosinhos &middot; Urban Innovative Actions (European Commission)</div>
+        </div>
+        <button id="about-panel-close" onclick="toggleAboutPanel()">&#10005;</button>
+      </div>
+      <p>MOVES-IT is a European Union Urban Innovative Actions (Urban Initiative) project, promoted by the Matosinhos City Council, with 3 components:</p>
+      <ul class="about-list">
+        <li>Urban Intelligence Center</li>
+        <li>Digital Neighborhood Contest</li>
+        <li>LABIC &mdash; Citizen Innovation Lab</li>
+      </ul>
+      <p>...and 3 territorial tools that organize this map's layers:</p>
+      <ul class="about-tracks">
+        <li>Inclusive Matosinhos</li>
+        <li>Green &amp; Blue Matosinhos</li>
+        <li>Vibrant Matosinhos &mdash; cultural and creative industries</li>
+      </ul>
+      <a class="about-link" href="https://www.urban-initiative.eu/ia-cities/matosinhos/about-projects" target="_blank" rel="noopener">Learn more about the project &rarr;</a>
+    </div>
+    <div id="legend">
+      <b>Parish</b>
+      <div class="leg-row" data-parish="Senhora da Hora" onclick="toggleFilter('Senhora da Hora')">
+        <div class="leg-dot" style="background:#FF595E"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
+      <div class="leg-row" data-parish="Custóias" onclick="toggleFilter('Custóias')">
+        <div class="leg-dot" style="background:#FF924C"></div> Custóias <span id="cnt-custoias"></span></div>
+      <div class="leg-row" data-parish="Guifões" onclick="toggleFilter('Guifões')">
+        <div class="leg-dot" style="background:#FFCA3A"></div> Guifões <span id="cnt-guifoes"></span></div>
+      <div class="leg-row" data-parish="Leça do Balio" onclick="toggleFilter('Leça do Balio')">
+        <div class="leg-dot" style="background:#8AC926"></div> Leça do Balio <span id="cnt-leca"></span></div>
+      <div class="leg-row" data-parish="Matosinhos" onclick="toggleFilter('Matosinhos')">
+        <div class="leg-dot" style="background:#1982C4"></div> Matosinhos <span id="cnt-mat"></span></div>
+      <div class="leg-row" data-parish="Leça da Palmeira" onclick="toggleFilter('Leça da Palmeira')">
+        <div class="leg-dot" style="background:#6A4C93"></div> Leça da Palmeira <span id="cnt-lpalmeira"></span></div>
+      <div class="leg-row" data-parish="São Mamede de Infesta" onclick="toggleFilter('São Mamede de Infesta')">
+        <div class="leg-dot" style="background:#4CC9F0"></div> São Mamede de Infesta <span id="cnt-smamede"></span></div>
+      <div class="leg-row" data-parish="Perafita" onclick="toggleFilter('Perafita')">
+        <div class="leg-dot" style="background:#F28482"></div> Perafita <span id="cnt-pera"></span></div>
+      <div class="leg-row" data-parish="Lavra" onclick="toggleFilter('Lavra')">
+        <div class="leg-dot" style="background:#06D6A0"></div> Lavra <span id="cnt-lavra"></span></div>
+      <div class="leg-row" data-parish="Santa Cruz do Bispo" onclick="toggleFilter('Santa Cruz do Bispo')">
+        <div class="leg-dot" style="background:#FB5607"></div> Santa Cruz do Bispo <span id="cnt-scbispo"></span></div>
+      <div id="active-layers-section">
+        <b>Active layers</b>
+        <div id="active-layers-list"></div>
+      </div>
+    </div>
+    <div id="no-results">No participants match the filter.</div>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-placeholder">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">
+        <circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+      </svg>
+      <p>Click a marker on the map<br>to see the details.</p>
+    </div>
+    <div id="sidebar-content">
+      <div id="sidebar-header">
+        <h2 id="s-name"></h2>
+        <div class="sub" id="s-parish-sub"></div>
+        <button id="sidebar-close" onclick="closeSidebar()">&#10005;</button>
+      </div>
+      <div id="sidebar-body">
+        <span id="s-badge" class="parish-badge"></span>
+        <dl class="info-grid" id="s-info-grid"></dl>
+        <div class="geocode-status" id="s-geocode-status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="footer">
+  MOVES-IT &mdash; Matosinhos &middot; Urban Innovative Actions (European Commission) &middot; Matosinhos City Council
+  <a href="https://www.urban-initiative.eu/ia-cities/matosinhos/about-projects" target="_blank" rel="noopener">learn more &rarr;</a>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+var ADDRESSES = [
+  {"name":"Participant 1","address":"R. da Quinta Seca 196, 2E","parish":"Senhora da Hora","lat":41.181712,"lon":-8.667468,"geoStatus":"ok"},
+  {"name":"Participant 2","address":"Rua Funde de Vila, 173 1 andar","parish":"Senhora da Hora","lat":41.185484,"lon":-8.671672,"geoStatus":"ok"},
+  {"name":"Participant 3","address":"Rua João H. Ulrich 232, 1ºesq 4460-333 Senhora da Hora","parish":"Senhora da Hora","lat":41.190766,"lon":-8.657403,"geoStatus":"ok"},
+  {"name":"Participant 4","address":"Rua João Villaret, 103, 4460-336 Senhora da Hora","parish":"Senhora da Hora","lat":41.186719,"lon":-8.652678,"geoStatus":"ok"},
+  {"name":"Participant 5","address":"Rua Augusto Lessa 473 RC DRT","parish":"Senhora da Hora","lat":41.1871,"lon":-8.6579,"geoStatus":"fallback"},
+  {"name":"Participant 6","address":"Rua Companhia dos Caulinos 678 RC Dto","parish":"Senhora da Hora","lat":41.188895,"lon":-8.636432,"geoStatus":"ok"},
+  {"name":"Participant 7","address":"Rua das Andorinhas, 50 Senhora da Hora","parish":"Senhora da Hora","lat":41.187524,"lon":-8.660769,"geoStatus":"ok"},
+  {"name":"Participant 8","address":"Rua Quinta do Viso 156, Entrada 5, 1ºD","parish":"Senhora da Hora","lat":41.185713,"lon":-8.64283,"geoStatus":"ok"},
+  {"name":"Participant 9","address":"Av. Vasco da Gama, 931 4460-435 Senhora da Hora","parish":"Senhora da Hora","lat":41.1911,"lon":-8.659393,"geoStatus":"ok"},
+  {"name":"Participant 10","address":"Rua Florbela Espanca Ent 100, 3º esq.","parish":"Matosinhos","lat":41.174972,"lon":-8.674326,"geoStatus":"ok"},
+  {"name":"Participant 11","address":"Rua Conde Alto Mearim 1396 4 tras., 4450-031, Matosinhos","parish":"Matosinhos","lat":41.180162,"lon":-8.679991,"geoStatus":"ok"},
+  {"name":"Participant 12","address":"Bairro de Carcavelos, bloco 1 b, casa 4","parish":"Matosinhos","lat":41.180655,"lon":-8.679918,"geoStatus":"ok"},
+  {"name":"Participant 13","address":"Rua 25 de abril 37 2 esquerdo 4450-304","parish":"Matosinhos","lat":41.181623,"lon":-8.672211,"geoStatus":"ok"},
+  {"name":"Participant 14","address":"Rua Real de baixo, 285 r/chão trás","parish":"Matosinhos","lat":41.178332,"lon":-8.674706,"geoStatus":"ok"},
+  {"name":"Participant 15","address":"Rua Raúl Brandão, entrada 67, casa 6","parish":"Matosinhos","lat":41.175748,"lon":-8.672271,"geoStatus":"ok"},
+  {"name":"Participant 16","address":"Rua Goa 9, 2º Esquerdo","parish":"Matosinhos","lat":41.183811,"lon":-8.680765,"geoStatus":"ok"},
+  {"name":"Participant 17","address":"Rua de S.Roque, 150 4450-245 Matosinhos","parish":"Matosinhos","lat":41.186576,"lon":-8.690431,"geoStatus":"ok"},
+  {"name":"Participant 18","address":"Rua José Joaquim Gomes da Silva, 55, 5Esq, 4450-171 Matosinhos","parish":"Matosinhos","lat":41.174426,"lon":-8.686585,"geoStatus":"ok"},
+  {"name":"Participant 19","address":"Rua Padre José Pacheco de Monte 371 r/ch","parish":"Matosinhos","lat":41.191808,"lon":-8.667613,"geoStatus":"ok"},
+  {"name":"Participant 20","address":"Avenida Dr Germano Vieira 1048 4 frente Guinfães Maia","parish":"Matosinhos","lat":41.215029,"lon":-8.608247,"geoStatus":"ok"},
+  {"name":"Participant 21","address":"Rua de Manhufe n54 traseiras 4450-180","parish":"Matosinhos","lat":41.188714,"lon":-8.678745,"geoStatus":"ok"},
+  {"name":"Participant 22","address":"Rua Aquilino Ribeiro nº944 Famões","parish":"Matosinhos","lat":41.1833,"lon":-8.6883,"geoStatus":"fallback"},
+  {"name":"Participant 23","address":"Rua do Mar Apertado 11 Matosinhos","parish":"Matosinhos","lat":41.188048,"lon":-8.680607,"geoStatus":"ok"},
+  {"name":"Participant 24","address":"Avenida Serpa Pinto, número 712- 6 esquerdo 4450-279 Matosinhos","parish":"Matosinhos","lat":41.180531,"lon":-8.691331,"geoStatus":"ok"},
+  {"name":"Participant 25","address":"Rua dos Pescadores, 344","parish":"Matosinhos","lat":41.263883,"lon":-8.724741,"geoStatus":"ok"},
+  {"name":"Participant 26","address":"Rua Salgueiro Maia, 145, 3º Dt 4460-802","parish":"Leça do Balio","lat":41.204782,"lon":-8.646819,"geoStatus":"ok"},
+  {"name":"Participant 27","address":"Rua Alves Redol 66","parish":"Leça do Balio","lat":41.20065,"lon":-8.635603,"geoStatus":"ok"},
+  {"name":"Participant 28","address":"Rua Elaine Sanceau nr 234 3 esq. traseira","parish":"Leça do Balio","lat":41.19052,"lon":-8.630341,"geoStatus":"ok"},
+  {"name":"Participant 29","address":"Rua Mainça 237, Leça do Balio","parish":"Leça do Balio","lat":41.204687,"lon":-8.624224,"geoStatus":"ok"},
+  {"name":"Participant 30","address":"Rua Comandante Quelhas Lima, 84, 2 esquerdo","parish":"Leça do Balio","lat":41.195422,"lon":-8.614038,"geoStatus":"ok"},
+  {"name":"Participant 31","address":"R de Picoutos 163","parish":"Leça do Balio","lat":41.189858,"lon":-8.625074,"geoStatus":"ok"},
+  {"name":"Participant 32","address":"Rua Sousa Prata, 130","parish":"Leça do Balio","lat":41.221096,"lon":-8.636373,"geoStatus":"ok"},
+  {"name":"Participant 33","address":"Rua António Barbosa da Silva, 145 Cidade da Maia 4470-031- Maia","parish":"Leça do Balio","lat":41.22468,"lon":-8.61108,"geoStatus":"ok"},
+  {"name":"Participant 34","address":"Estrada da Circunvalação 10327 R/C, 4250-151 Porto","parish":"Leça do Balio","lat":41.179249,"lon":-8.629696,"geoStatus":"ok"},
+  {"name":"Participant 35","address":"Travessa Canto 17 4465-052","parish":"Leça do Balio","lat":41.19198,"lon":-8.618704,"geoStatus":"ok"},
+  {"name":"Participant 36","address":"Rua Monte do Vale 20 Leça do Balio","parish":"Leça do Balio","lat":41.215694,"lon":-8.636613,"geoStatus":"ok"},
+  {"name":"Participant 37","address":"Praceta Ponte da Pedra 66 hab 11","parish":"Leça do Balio","lat":41.205711,"lon":-8.613761,"geoStatus":"ok"},
+  {"name":"Participant 38","address":"Rua António Fragoso 328 4460-669 Custóias","parish":"Leça do Balio","lat":41.20263,"lon":-8.638004,"geoStatus":"ok"},
+  {"name":"Participant 39","address":"Alameda das Ribeiras nº89 2 esq. 4455-578 Perafita","parish":"Perafita","lat":41.227863,"lon":-8.689459,"geoStatus":"ok"},
+  {"name":"Participant 40","address":"Travessa Ramalho Ortigão entrada 103 3ºdireito","parish":"Perafita","lat":41.224264,"lon":-8.700672,"geoStatus":"ok"},
+  {"name":"Participant 41","address":"Rua Nicolau Tolentino, nº44 CP-4455-555","parish":"Perafita","lat":41.22291,"lon":-8.700736,"geoStatus":"ok"},
+  {"name":"Participant 42","address":"Rua Silva Aroso, 962","parish":"Perafita","lat":41.233352,"lon":-8.699061,"geoStatus":"ok"},
+  {"name":"Participant 43","address":"Travessa Ramalho Ortigão 119 1 Esquerdo","parish":"Perafita","lat":41.224264,"lon":-8.700672,"geoStatus":"ok"},
+  {"name":"Participant 44","address":"Rua Ramalho Ortigão 15 4455-537 Perafita","parish":"Perafita","lat":41.223256,"lon":-8.700865,"geoStatus":"ok"},
+  {"name":"Participant 45","address":"Rua França Junior 692 Matosinhos","parish":"Perafita","lat":41.18242,"lon":-8.688295,"geoStatus":"ok"},
+  {"name":"Participant 46","address":"Travessa da Agra, 267-3ºB, 4450-599 Matosinhos","parish":"Perafita","lat":41.19662,"lon":-8.697967,"geoStatus":"ok"},
+  {"name":"Participant 47","address":"Rua de Antão Gonçalves, 185 4455 Lavra","parish":"Perafita","lat":41.25051,"lon":-8.722829,"geoStatus":"ok"},
+  {"name":"Participant 48","address":"Rua de Almeiriga Norte 2694 4455-418 Perafita","parish":"Perafita","lat":41.2265,"lon":-8.716461,"geoStatus":"ok"},
+  {"name":"Participant 49","address":"Av. Dr. Fernando Aroso","parish":"Perafita","lat":41.193253,"lon":-8.696712,"geoStatus":"ok"},
+  {"name":"Participant 50","address":"Rua Doutor Afonso Cordeiro, 899- 1 FTE., 4470-007 Matosinhos","parish":"Perafita","lat":41.173996,"lon":-8.684747,"geoStatus":"ok"},
+  {"name":"Participant 51","address":"Rua Dom Armindo Lopes Coelho, nº33, apart. 03 Maia","parish":"Perafita","lat":41.226222,"lon":-8.621864,"geoStatus":"ok"},
+  {"name":"Participant 52","address":"Rua Almeiriga Norte 2088, Perafita","parish":"Perafita","lat":41.221468,"lon":-8.713917,"geoStatus":"ok"},
+  {"name":"Participant 53","address":"Avenida das Ribeiras 875 2ºEsq","parish":"Perafita","lat":41.231601,"lon":-8.693716,"geoStatus":"ok"}
+];
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+var PARISH_COLOR = {
+  'senhora da hora':       '#FF595E',
+  'custóias':              '#FF924C',
+  'guifões':               '#FFCA3A',
+  'leça do balio':         '#8AC926',
+  'matosinhos':            '#1982C4',
+  'leça da palmeira':      '#6A4C93',
+  'são mamede de infesta': '#4CC9F0',
+  'perafita':              '#F28482',
+  'lavra':                 '#06D6A0',
+  'santa cruz do bispo':   '#FB5607',
+};
+
+// GeoJSON boundary polygons — injected at deploy time by GitHub Actions.
+// var BOUNDARY_GEOJSON = { "senhora da hora": { GeoJSON Feature }, … };
+var BOUNDARY_GEOJSON = {};
+
+// GeoJSON layers — injected at deploy time by GitHub Actions.
+var BAIRROS_GEOJSON = {};
+var HABITACAO_SOCIAL_GEOJSON = {};
+var EQUIPAMENTOS_GEOJSON = {};
+var ASSOCIACOES_GEOJSON = {};
+var AREAS_AJARDINADAS_GEOJSON = {};
+var ZONAS_VIZINHANCA_GEOJSON = {};
+
+// MOVES-IT extra layers — injected at deploy time by GitHub Actions.
+// Object keyed by layer key -> GeoJSON FeatureCollection (see EXTRA_LAYERS config below).
+var EXTRA_LAYERS_DATA = {};
+
+// ─── MAP ─────────────────────────────────────────────────────────────────────
+var map = L.map('map', { center: [41.195, -8.68], zoom: 13 });
+
+var satellite = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles &copy; Esri &mdash; Source: Esri et al.', maxZoom: 19 }
+).addTo(map);
+
+var streets = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
+);
+
+L.control.layers(
+  { 'Satellite (ESRI)': satellite, 'Map (OSM)': streets }, {},
+  { position: 'topright' }
+).addTo(map);
+
+var markerCluster = L.markerClusterGroup({
+  showCoverageOnHover: false,
+  spiderfyOnMaxZoom: true,
+  maxClusterRadius: 48,
+  iconCreateFunction: function(cluster) {
+    var count = cluster.getChildCount();
+    var size = count < 10 ? 34 : (count < 25 ? 42 : 50);
+    return L.divIcon({ html: '<div>' + count + '</div>', className: 'marker-cluster-custom',
+                        iconSize: L.point(size, size) });
+  }
+}).addTo(map);
+
+L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
+
+var FullscreenControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd: function() {
+    var btn = L.DomUtil.create('button', 'leaflet-bar fullscreen-btn');
+    btn.type = 'button';
+    btn.innerHTML = '&#9974;';
+    btn.title = 'Fullscreen';
+    L.DomEvent.disableClickPropagation(btn);
+    L.DomEvent.on(btn, 'click', function() {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    });
+    return btn;
+  }
+});
+map.addControl(new FullscreenControl());
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var markers        = [];
+var selectedMarker = null;
+var activeFilter   = null;
+
+// ─── ICONS ───────────────────────────────────────────────────────────────────
+function makeIcon(color, selected, failed) {
+  var size = selected ? 20 : 14;
+  var sw   = selected ? 2.5 : 1.5;
+  var inner = failed
+    ? '<line x1="7" y1="5" x2="13" y2="11" stroke="white" stroke-width="2"/><line x1="13" y1="5" x2="7" y2="11" stroke="white" stroke-width="2"/>'
+    : '<circle cx="10" cy="8" r="3.5" fill="white" opacity="0.85"/>';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+(size*2)+'" height="'+(size*2.4)+'" viewBox="0 0 20 24">'
+          + '<path d="M10 0C5.8 0 2 3.8 2 8c0 6 8 16 8 16s8-10 8-16c0-4.2-3.8-8-8-8z"'
+          + ' fill="'+(failed?'#888':color)+'" stroke="white" stroke-width="'+sw+'"/>'
+          + inner + '</svg>';
+  var cls = 'marker-pin' + (selected ? ' marker-selected' : '');
+  return L.divIcon({ html: svg, iconSize: [size*2, size*2.4],
+                     iconAnchor: [size, size*2.4], popupAnchor: [0, -(size*2)], className: cls });
+}
+
+function emojiDivIcon(emoji, color) {
+  var html = '<div class="cat-icon" style="background:' + color + '">' + emoji + '</div>';
+  return L.divIcon({ html: html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+}
+
+// ─── MARKERS ─────────────────────────────────────────────────────────────────
+function addMarker(rec) {
+  var color  = PARISH_COLOR[rec.parish.toLowerCase()] || '#aaa';
+  var failed = (rec.geoStatus === 'fallback');
+  var marker = L.marker([rec.lat, rec.lon], { icon: makeIcon(color, false, failed) })
+    .bindTooltip(rec.name, { permanent: false, direction: 'top' });
+
+  var entry = { rec: rec, marker: marker, lat: rec.lat, lon: rec.lon,
+                status: rec.geoStatus || 'ok', visible: true };
+  markers.push(entry);
+  markerCluster.addLayer(marker);
+  marker.on('click', function() { openSidebar(entry); });
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+function openSidebar(entry) {
+  var pcolor = PARISH_COLOR[entry.rec.parish.toLowerCase()] || '#aaa';
+  if (selectedMarker && selectedMarker !== entry) {
+    var old = selectedMarker;
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish.toLowerCase()]||'#aaa', false, old.status==='fallback'));
+  }
+  selectedMarker = entry;
+  entry.marker.setIcon(makeIcon(pcolor, true, entry.status==='fallback'));
+
+  document.getElementById('sidebar-placeholder').style.display = 'none';
+  var sidebarContent = document.getElementById('sidebar-content');
+  sidebarContent.style.display = 'flex';
+  sidebarContent.style.opacity = '0';
+  requestAnimationFrame(function() { sidebarContent.style.opacity = '1'; });
+  document.getElementById('sidebar-header').style.borderBottom = '3px solid ' + pcolor;
+  document.getElementById('s-name').textContent       = entry.rec.name;
+  document.getElementById('s-parish-sub').textContent = entry.rec.parish;
+
+  var badge = document.getElementById('s-badge');
+  badge.textContent      = entry.rec.parish;
+  badge.style.background = pcolor;
+
+  var g = '<dt>Address</dt><dd>' + entry.rec.address + '</dd>'
+        + '<dt>Parish</dt><dd>' + entry.rec.parish + '</dd>'
+        + (entry.rec.phone ? '<dt>Phone</dt><dd>' + entry.rec.phone + '</dd>' : '')
+        + (entry.rec.email ? '<dt>Email</dt><dd><a href="mailto:' + entry.rec.email
+           + '" style="color:#7ec8e3">' + entry.rec.email + '</a></dd>' : '')
+        + '<dt>Coordinates</dt><dd>' + entry.lat.toFixed(5) + '° N, '
+        + Math.abs(entry.lon).toFixed(5) + '° W</dd>';
+  document.getElementById('s-info-grid').innerHTML = g;
+
+  var statusEl = document.getElementById('s-geocode-status');
+  if (entry.status === 'fallback') {
+    statusEl.innerHTML = '<span class="geocode-fail">&#9888; Parish centroid (address not found)</span>';
+  } else if (entry.status === 'approx') {
+    statusEl.innerHTML = '<span class="geocode-approx">&#9651; Approximate position</span>';
+  } else {
+    statusEl.innerHTML = '<span class="geocode-ok">&#10003; Exact geocoding</span>';
+  }
+
+  var fly = function() {
+    map.flyTo([entry.lat, entry.lon], Math.max(map.getZoom(), 16), { animate: true, duration: 0.8 });
+  };
+  if (markerCluster.hasLayer(entry.marker)) {
+    markerCluster.zoomToShowLayer(entry.marker, fly);
+  } else {
+    fly();
+  }
+}
+
+function closeSidebar() {
+  if (selectedMarker) {
+    var old = selectedMarker;
+    old.marker.setIcon(makeIcon(PARISH_COLOR[old.rec.parish.toLowerCase()]||'#aaa', false, old.status==='fallback'));
+    selectedMarker = null;
+  }
+  document.getElementById('sidebar-content').style.display     = 'none';
+  document.getElementById('sidebar-placeholder').style.display = 'flex';
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────────
+function applyFilters() {
+  var search = document.getElementById('search-input').value.trim().toLowerCase();
+  var parish = document.getElementById('filter-parish').value || activeFilter || '';
+  var visible = 0;
+
+  markers.forEach(function(entry) {
+    var ok = (!search || entry.rec.name.toLowerCase().indexOf(search) >= 0)
+          && (!parish || entry.rec.parish === parish);
+    if (ok) { if (!markerCluster.hasLayer(entry.marker)) markerCluster.addLayer(entry.marker); visible++; }
+    else    { if (markerCluster.hasLayer(entry.marker)) markerCluster.removeLayer(entry.marker); }
+    entry.visible = ok;
+  });
+
+  document.getElementById('match-count').textContent =
+    markers.length > 0 ? visible + ' / ' + ADDRESSES.length + ' participants' : '';
+  document.getElementById('no-results').style.display =
+    (markers.length > 0 && visible === 0) ? 'block' : 'none';
+
+  if (selectedMarker && !selectedMarker.visible) closeSidebar();
+
+  document.querySelectorAll('#legend .leg-row').forEach(function(row) {
+    row.classList.toggle('dim', !!parish && row.dataset.parish !== parish);
+  });
+}
+
+function clearAll() {
+  document.getElementById('search-input').value  = '';
+  document.getElementById('filter-parish').value = '';
+  activeFilter = null;
+  applyFilters();
+}
+
+function toggleFilter(parish) {
+  activeFilter = (activeFilter === parish) ? null : parish;
+  document.getElementById('filter-parish').value = activeFilter || '';
+  applyFilters();
+}
+
+document.getElementById('search-input').addEventListener('input',   applyFilters);
+document.getElementById('filter-parish').addEventListener('change', function() {
+  activeFilter = null; applyFilters();
+});
+
+function updateCounts() {
+  var cnt_ids = {
+    'senhora da hora': 'cnt-sdh',           'custóias': 'cnt-custoias',
+    'guifões': 'cnt-guifoes',               'leça do balio': 'cnt-leca',
+    'matosinhos': 'cnt-mat',                'leça da palmeira': 'cnt-lpalmeira',
+    'são mamede de infesta': 'cnt-smamede', 'perafita': 'cnt-pera',
+    'lavra': 'cnt-lavra',                   'santa cruz do bispo': 'cnt-scbispo'
+  };
+  var counts = {};
+  Object.keys(cnt_ids).forEach(function(p) { counts[p] = 0; });
+  markers.forEach(function(e) {
+    var key = e.rec.parish.toLowerCase();
+    if (counts[key] !== undefined) counts[key]++;
+  });
+  Object.keys(cnt_ids).forEach(function(p) {
+    var el = document.getElementById(cnt_ids[p]);
+    if (el) el.textContent = counts[p] ? ' (' + counts[p] + ')' : '';
+  });
+}
+
+// ─── LAYERS PANEL ("SELECT LAYERS") — data-driven, grouped checkbox list ─────
+// Every toggleable overlay (previously a mix of topbar buttons and a separate
+// MOVES-IT-only panel) lives in this one list now. Each entry supplies its
+// `data` directly (either a locally-injected GeoJSON var, or an entry from
+// EXTRA_LAYERS_DATA for the CMM-server layers); `style`/`tooltip`/`pointToLayer`
+// are optional per-entry overrides, falling back to sensible generic defaults.
+var PARISH_CANONICAL = {
+  'senhora da hora': 'Senhora da Hora', 'custóias': 'Custóias', 'guifões': 'Guifões',
+  'leça do balio': 'Leça do Balio', 'matosinhos': 'Matosinhos', 'leça da palmeira': 'Leça da Palmeira',
+  'são mamede de infesta': 'São Mamede de Infesta', 'perafita': 'Perafita',
+  'lavra': 'Lavra', 'santa cruz do bispo': 'Santa Cruz do Bispo'
+};
+
+function normalizeParishKey(nome) {
+  var norm = (nome || '').toLowerCase();
+  if (norm === 's. mamede de infesta') norm = 'são mamede de infesta'; // GDB abbreviation
+  return norm;
+}
+
+function parishColorFor(nome) {
+  return PARISH_COLOR[normalizeParishKey(nome)] || '#888';
+}
+
+// Ray-casting point-in-polygon (even-odd rule), used to color/label each resident by the
+// parish polygon their coordinates actually fall inside, rather than trusting a possibly
+// stale/incorrect stored "parish" field.
+function pointInRing(lon, lat, ring) {
+  var inside = false;
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    var xi = ring[i][0], yi = ring[i][1];
+    var xj = ring[j][0], yj = ring[j][1];
+    var intersect = ((yi > lat) !== (yj > lat)) &&
+      (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInPolygonGeom(lon, lat, geom) {
+  if (!geom) return false;
+  if (geom.type === 'Polygon') {
+    if (!pointInRing(lon, lat, geom.coordinates[0])) return false;
+    for (var h = 1; h < geom.coordinates.length; h++) {
+      if (pointInRing(lon, lat, geom.coordinates[h])) return false;
+    }
+    return true;
+  }
+  if (geom.type === 'MultiPolygon') {
+    return geom.coordinates.some(function(poly) {
+      return pointInPolygonGeom(lon, lat, { type: 'Polygon', coordinates: poly });
+    });
+  }
+  return false;
+}
+
+function resolveParishByLocation(lat, lon) {
+  for (var key in BOUNDARY_GEOJSON) {
+    var feat = BOUNDARY_GEOJSON[key];
+    if (feat && feat.geometry && pointInPolygonGeom(lon, lat, feat.geometry)) {
+      var normKey = normalizeParishKey(feat.properties && feat.properties.nome);
+      return PARISH_CANONICAL[normKey] || (feat.properties && feat.properties.nome) || null;
+    }
+  }
+  return null;
+}
+
+function pickLabel(props) {
+  if (!props) return '';
+  var candidates = ['designacao','Designacao','DESIGNACAO','designação','Designação',
+                     'nome','Nome','NOME','name','Name','NAME',
+                     'descricao','Descricao','DESCRICAO','descrição','Descrição'];
+  for (var i = 0; i < candidates.length; i++) {
+    if (props[candidates[i]]) return String(props[candidates[i]]);
+  }
+  for (var k in props) {
+    if (typeof props[k] === 'string' && props[k].trim()) return props[k];
+  }
+  return '';
+}
+
+// Shared tooltip for the AtividadesEconomicas "_PO" layers (saude, educacao, desporto,
+// cultura, solidariedade, hidrografia, linhaMetro). TEMA_PO is almost always the generic
+// literal "Sistemas Estruturantes" — never a useful label. The real name is whichever of
+// these is most specific for that row.
+function poTooltip(feat, fallbackLabel) {
+  var p = feat.properties || {};
+  var name = p['subespecificação_PO'] || p['especificações_PO'] || p['designação_PO'] || fallbackLabel;
+  var sub  = p['SUBTEMA_PO'] || '';
+  return '<b>' + String(name).trim() + '</b>' + (sub ? '<br><span style="opacity:.7">' + sub + '</span>' : '');
+}
+
+// Shared tooltip for AMB_LimpezaUrbana layers (residuosVerdes, ecopontos) — no name
+// field in this schema; build a readable label from material/type + address instead.
+function limpezaTooltip(feat, fallbackLabel) {
+  var p = feat.properties || {};
+  return '<b>' + (p.MATERIAL_RECOLHIDO || fallbackLabel) + '</b><br>'
+    + (p.MORADA || '') + (p.FREGUESIA ? ', ' + p.FREGUESIA : '');
+}
+
+var EXTRA_LAYERS = [
+  // ── Concelho (previously flat topbar buttons) ──
+  { key: 'boundaries', label: 'Boundaries (Parishes)', category: 'Municipality', color: '#66c896', zPriority: 0,
+    data: { type: 'FeatureCollection',
+            features: Object.keys(BOUNDARY_GEOJSON).map(function(k) { return BOUNDARY_GEOJSON[k]; }) },
+    style: function(feat) {
+      var c = parishColorFor(feat.properties && feat.properties.nome);
+      return { color: c, weight: 2.5, opacity: 0.9, fillColor: c, fillOpacity: 0.22 };
+    },
+    tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
+  },
+  { key: 'boundariesSelecao', label: 'Boundaries (4 Parishes)', category: 'Municipality', color: '#5c4d7d', zPriority: 0,
+    data: { type: 'FeatureCollection',
+            features: ['perafita', 'senhora da hora', 'matosinhos', 'leça do balio']
+              .map(function(k) { return BOUNDARY_GEOJSON[k]; }).filter(Boolean) },
+    style: function(feat) {
+      var c = parishColorFor(feat.properties && feat.properties.nome);
+      return { color: c, weight: 2.5, opacity: 0.9, fillColor: c, fillOpacity: 0.22 };
+    },
+    tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.nome) || '') + '</b>'; }
+  },
+  { key: 'bairros', label: 'Neighborhoods', category: 'Municipality', color: '#c9982a', geom: 'polygon', zPriority: 1,
+    data: BAIRROS_GEOJSON,
+    style: { color: '#c9982a', weight: 2, opacity: 0.9, dashArray: '6 4', fillColor: '#c9982a', fillOpacity: 0.12 },
+    tooltip: function(feat) { return '<b>' + ((feat.properties && feat.properties.designacao) || '') + '</b>'; }
+  },
+  { key: 'habitacao', label: 'Social Housing', category: 'Municipality', color: '#b83227', geom: 'polygon',
+    data: HABITACAO_SOCIAL_GEOJSON,
+    style: { color: '#b83227', weight: 2, opacity: 0.9, dashArray: '4 3', fillColor: '#b83227', fillOpacity: 0.18 },
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      return '<b>' + (p.descricao || '') + '</b>'
+        + (p.n_fogos ? ' (' + p.n_fogos + ' units' + (p.ano_const ? ', ' + p.ano_const : '') + ')' : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
+    }
+  },
+  { key: 'equipamentosLocal', label: 'Facilities (Total)', category: 'Inclusion', color: '#3d7a91', geom: 'point', emoji: '🏢',
+    data: EQUIPAMENTOS_GEOJSON,
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      return '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.dominio || '') + (p.categoria ? ' – ' + p.categoria : '') + '<br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
+    }
+  },
+  { key: 'associacoesLocal', label: 'Associations', category: 'Inclusion', color: '#a15c2e', geom: 'point', emoji: '🤝',
+    data: ASSOCIACOES_GEOJSON,
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      return '<b>' + (p.designacao || '') + '</b><br>'
+        + (p.morada || '') + (p.freguesia ? ', ' + p.freguesia : '');
+    }
+  },
+  { key: 'areasVerdes', label: 'Green Areas', category: 'Green & Blue', color: '#2d6a4f', geom: 'polygon',
+    data: AREAS_AJARDINADAS_GEOJSON,
+    style: { color: '#2d6a4f', weight: 1.5, opacity: 0.9, fillColor: '#2d6a4f', fillOpacity: 0.25 },
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      return '<b>' + (p.designacao || '') + '</b>'
+        + (p.area_m2 != null ? ' (' + Math.round(p.area_m2) + ' m&sup2;)' : '') + '<br>'
+        + (p.freguesia || '');
+    }
+  },
+  { key: 'bairrosPiloto', label: 'Neighborhoods (Pilot)', category: 'Municipality', color: '#c9722c', geom: 'polygon', zPriority: 2,
+    data: ZONAS_VIZINHANCA_GEOJSON,
+    style: { color: '#c9722c', weight: 2, opacity: 0.9, dashArray: '3 3', fillColor: '#c9722c', fillOpacity: 0.15 },
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      var label = p.designacao || p.Designacao || p.DESIGNACAO || p.designação
+        || p.nome || p.Nome || p.NOME || p.descricao || p.Descricao || 'Neighborhood zone';
+      return '<b>' + label + '</b><br><span style="opacity:.7">Pilot project — partial coverage</span>';
+    }
+  },
+  // ── MOVES-IT layers (CMM ArcGIS server, injected via EXTRA_LAYERS_DATA) ──
+  { key: 'bairrosDigitais',      label: 'Digital Neighborhoods',                category: 'Digital Neighborhood', color: '#b08a2e', geom: 'point',   emoji: '📶', data: EXTRA_LAYERS_DATA.bairrosDigitais },
+  { key: 'jardinsParques',       label: 'Gardens and Parks',               category: 'Green & Blue',   color: '#3a7d44', geom: 'point',   emoji: '🌳', data: EXTRA_LAYERS_DATA.jardinsParques },
+  { key: 'redeHidrografica',     label: 'Hydrographic Network',               category: 'Green & Blue',   color: '#1d6fa5', geom: 'line',    data: EXTRA_LAYERS_DATA.redeHidrografica },
+  { key: 'baciasHidrograficas',  label: 'Hydrographic Basins',            category: 'Green & Blue',   color: '#1e4d6b', geom: 'polygon', data: EXTRA_LAYERS_DATA.baciasHidrograficas },
+  { key: 'residuosVerdes',       label: 'Green Waste',                 category: 'Green & Blue',   color: '#6b8e4e', geom: 'point',   emoji: '🌿', data: EXTRA_LAYERS_DATA.residuosVerdes,
+    tooltip: function(feat) { return limpezaTooltip(feat, 'Green Waste'); }
+  },
+  { key: 'ecopontos',            label: 'Recycling Points',                       category: 'Green & Blue',   color: '#4c7a3f', geom: 'point',   emoji: '♻️', data: EXTRA_LAYERS_DATA.ecopontos,
+    tooltip: function(feat) { return limpezaTooltip(feat, 'Recycling Points'); }
+  },
+  { key: 'equip3idade',          label: 'Senior Citizen Facilities',           category: 'Inclusion',       color: '#8467a8', geom: 'point',   emoji: '🧓', data: EXTRA_LAYERS_DATA.equip3idade },
+  { key: 'equipEscolares',       label: 'School Facilities',          category: 'Inclusion',       color: '#c2508f', geom: 'point',   emoji: '🏫', data: EXTRA_LAYERS_DATA.equipEscolares },
+  { key: 'saude',                label: 'Health',                           category: 'Inclusion',       color: '#b8443c', geom: 'point',   emoji: '🏥', data: EXTRA_LAYERS_DATA.saude,
+    tooltip: function(feat) { return poTooltip(feat, 'Health'); }
+  },
+  { key: 'educacao',             label: 'Education',                        category: 'Inclusion',       color: '#d98a9e', geom: 'point',   emoji: '📚', data: EXTRA_LAYERS_DATA.educacao,
+    tooltip: function(feat) { return poTooltip(feat, 'Education'); }
+  },
+  { key: 'desporto',             label: 'Sports',                        category: 'Inclusion',       color: '#3d6e99', geom: 'point',   emoji: '⚽', data: EXTRA_LAYERS_DATA.desporto,
+    tooltip: function(feat) { return poTooltip(feat, 'Sports'); }
+  },
+  { key: 'solidariedade',        label: 'Solidarity and Social Security', category: 'Inclusion',      color: '#c76b3f', geom: 'point',   emoji: '🤲', data: EXTRA_LAYERS_DATA.solidariedade,
+    tooltip: function(feat) { return poTooltip(feat, 'Solidarity and Social Security'); }
+  },
+  { key: 'cultura',              label: 'Culture',                         category: 'Culture',        color: '#b5773a', geom: 'point',   emoji: '🎭', data: EXTRA_LAYERS_DATA.cultura,
+    tooltip: function(feat) { return poTooltip(feat, 'Culture'); }
+  },
+  { key: 'patrimonioCultural',   label: 'Built Cultural Heritage',      category: 'Culture',        color: '#a8862f', geom: 'point',   emoji: '🏛️', data: EXTRA_LAYERS_DATA.patrimonioCultural },
+  { key: 'areasArqueologicas',   label: 'Archaeological Sites',             category: 'Culture',        color: '#8a6642', geom: 'polygon', data: EXTRA_LAYERS_DATA.areasArqueologicas },
+  { key: 'linhaMetro',           label: 'Existing Metro Line',        category: 'Mobility',     color: '#d7263d', geom: 'line',    data: EXTRA_LAYERS_DATA.linhaMetro,
+    tooltip: function(feat) { return poTooltip(feat, 'Existing Metro Line'); }
+  },
+  { key: 'estacoesMetro',        label: 'Metro Stations',               category: 'Mobility',     color: '#b8912a', geom: 'point',   emoji: '🚇', data: EXTRA_LAYERS_DATA.estacoesMetro },
+  { key: 'estacoesParagens',     label: 'Stations and Stops',             category: 'Mobility',     color: '#a67c1f', geom: 'point',   emoji: '🚌', data: EXTRA_LAYERS_DATA.estacoesParagens,
+    tooltip: function(feat) {
+      var p = feat.properties || {};
+      var label = 'Stop';
+      if (p.Rede) label += ' — ' + p.Rede;
+      if (p.Tipo) label += ' (' + p.Tipo + ')';
+      return '<b>' + label + '</b>';
+    }
+  },
+  { key: 'infraestruturaCiclavel',   label: 'Cycling Infrastructure',     category: 'Mobility',     color: '#d35400', geom: 'line',    data: EXTRA_LAYERS_DATA.infraestruturaCiclavel },
+  { key: 'estacionamentoBicicletas', label: 'Bicycle Parking',   category: 'Mobility',     color: '#4d8f68', geom: 'point',   emoji: '🚲', data: EXTRA_LAYERS_DATA.estacionamentoBicicletas },
+];
+var extraLayerState = {}; // key -> { layer: L.layer|null, on: bool }
+
+function drawExtraLayer(cfg) {
+  var data = cfg.data;
+  if (!data || !data.features || !data.features.length) return false;
+  var layer = L.geoJSON(data, {
+    pointToLayer: cfg.pointToLayer || function(feat, latlng) {
+      if (cfg.emoji) return L.marker(latlng, { icon: emojiDivIcon(cfg.emoji, cfg.color) });
+      return L.circleMarker(latlng, {
+        radius: 5, color: cfg.color, weight: 1.5, opacity: 1,
+        fillColor: cfg.color, fillOpacity: 0.7
+      });
+    },
+    style: cfg.style || function() {
+      return cfg.geom === 'line'
+        ? { color: cfg.color, weight: 2.5, opacity: 0.85 }
+        : { color: cfg.color, weight: 2, opacity: 0.9, fillColor: cfg.color, fillOpacity: 0.2 };
+    },
+    onEachFeature: function(feat, lyr) {
+      var html = cfg.tooltip ? cfg.tooltip(feat) : ('<b>' + (pickLabel(feat.properties) || cfg.label) + '</b>');
+      lyr.bindTooltip(html, { sticky: true });
+    }
+  }).addTo(map);
+  extraLayerState[cfg.key].layer = layer;
+  return true;
+}
+
+function toggleExtraLayer(key) {
+  var cfg = null;
+  for (var i = 0; i < EXTRA_LAYERS.length; i++) { if (EXTRA_LAYERS[i].key === key) { cfg = EXTRA_LAYERS[i]; break; } }
+  if (!cfg) return;
+  var state = extraLayerState[key];
+  var checkbox = document.getElementById('chk-' + key);
+  var statusEl = document.getElementById('status-' + key);
+  if (checkbox.checked) {
+    if (!drawExtraLayer(cfg)) {
+      checkbox.checked = false;
+      if (statusEl) statusEl.textContent = ' (N/D)';
+      return;
+    }
+    state.on = true;
+    if (statusEl) statusEl.textContent = '';
+  } else {
+    if (state.layer) { map.removeLayer(state.layer); state.layer = null; }
+    state.on = false;
+  }
+  reapplyLayerStacking();
+  updateActiveLayersLegend();
+}
+
+// Wide "context" polygons (parish limits, bairros, pilot zones) must always render behind
+// more specific thematic layers, or their fill blocks hover/tooltip access to what's under
+// them — bug seen with "Limites (Freguesias)" toggled after "Habitação Social". Re-applied on
+// every toggle so the result is deterministic regardless of click order.
+function effectiveZPriority(cfg) {
+  if (cfg.zPriority != null) return cfg.zPriority;
+  if (cfg.geom === 'polygon') return 10;
+  if (cfg.geom === 'line') return 20;
+  return 30;
+}
+
+function reapplyLayerStacking() {
+  var active = EXTRA_LAYERS.filter(function(cfg) {
+    return extraLayerState[cfg.key] && extraLayerState[cfg.key].on && extraLayerState[cfg.key].layer;
+  });
+  active.sort(function(a, b) { return effectiveZPriority(a) - effectiveZPriority(b); });
+  active.forEach(function(cfg) { extraLayerState[cfg.key].layer.bringToFront(); });
+}
+
+// Read-only summary of what's on — the checkboxes in the SELECT LAYERS
+// dropdown remain the single control surface; this list is not clickable.
+function updateActiveLayersLegend() {
+  var box  = document.getElementById('active-layers-section');
+  var list = document.getElementById('active-layers-list');
+  var active = EXTRA_LAYERS.filter(function(cfg) {
+    return extraLayerState[cfg.key] && extraLayerState[cfg.key].on;
+  });
+  if (!active.length) { box.style.display = 'none'; list.innerHTML = ''; return; }
+  var html = '';
+  active.forEach(function(cfg) {
+    html += '<div class="leg-row-static">'
+          + '<div class="leg-dot" style="background:' + cfg.color + '"></div>' + cfg.label + '</div>';
+  });
+  list.innerHTML = html;
+  box.style.display = 'block';
+}
+
+function buildLayersPanel() {
+  var byCategory = {};
+  var order = [];
+  EXTRA_LAYERS.forEach(function(cfg) {
+    extraLayerState[cfg.key] = { layer: null, on: false };
+    if (!byCategory[cfg.category]) { byCategory[cfg.category] = []; order.push(cfg.category); }
+    byCategory[cfg.category].push(cfg);
+  });
+  var html = '';
+  order.forEach(function(cat) {
+    html += '<div class="layer-category"><b>' + cat + '</b>';
+    byCategory[cat].forEach(function(cfg) {
+      html += '<label class="layer-check">'
+        + '<input type="checkbox" id="chk-' + cfg.key + '" onchange="toggleExtraLayer(\'' + cfg.key + '\')">'
+        + '<span class="layer-swatch" style="background:' + cfg.color + '"></span>'
+        + cfg.label
+        + '<span id="status-' + cfg.key + '" class="layer-nd"></span>'
+        + '</label>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('layers-panel-body').innerHTML = html;
+}
+
+function toggleLayersPanel() {
+  var panel = document.getElementById('layers-panel');
+  var btn = document.getElementById('toggle-layers-panel');
+  var isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('active', !isOpen);
+  if (!isOpen) { panel.classList.remove('opening'); void panel.offsetWidth; panel.classList.add('opening'); }
+}
+
+function toggleAboutPanel() {
+  var panel = document.getElementById('about-panel');
+  var btn = document.getElementById('about-btn');
+  var isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('active', !isOpen);
+  if (!isOpen) { panel.classList.remove('opening'); void panel.offsetWidth; panel.classList.add('opening'); }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function initMap() {
+  ADDRESSES.forEach(function(rec) {
+    var resolved = resolveParishByLocation(rec.lat, rec.lon);
+    if (resolved) rec.parish = resolved;
+  });
+  ADDRESSES.forEach(function(rec) { addMarker(rec); });
+  updateCounts();
+  applyFilters();
+  buildLayersPanel();
+}
+
+initMap();
+</script>
+</body>
+</html>
