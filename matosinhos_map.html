@@ -140,6 +140,25 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
   width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 11px;
 }
 
+/* macOS Safari/Chrome hide scrollbars by default until actively scrolling, which leaves no
+   visual hint that these panels have more content — force a slim, always-visible scrollbar. */
+#sidebar, #layers-panel, #about-panel {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(158,127,221,0.6) rgba(255,255,255,0.08);
+}
+#sidebar::-webkit-scrollbar, #layers-panel::-webkit-scrollbar, #about-panel::-webkit-scrollbar {
+  width: 8px;
+}
+#sidebar::-webkit-scrollbar-track, #layers-panel::-webkit-scrollbar-track, #about-panel::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.06);
+}
+#sidebar::-webkit-scrollbar-thumb, #layers-panel::-webkit-scrollbar-thumb, #about-panel::-webkit-scrollbar-thumb {
+  background: rgba(158,127,221,0.55); border-radius: 4px;
+}
+#sidebar::-webkit-scrollbar-thumb:hover, #layers-panel::-webkit-scrollbar-thumb:hover, #about-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(158,127,221,0.8);
+}
+
 #about-panel {
   display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900;
   background: rgba(22,33,62,0.97); border: 1px solid rgba(255,255,255,0.15);
@@ -277,6 +296,20 @@ body { font-family: 'Inter', Arial, sans-serif; height: 100vh; display: flex; fl
       <a class="about-link" href="https://www.urban-initiative.eu/ia-cities/matosinhos/about-projects" target="_blank" rel="noopener">Saber mais sobre o projeto &rarr;</a>
     </div>
     <div id="legend">
+      <b>Tipo de Participante</b>
+      <div class="leg-row-static">
+        <svg width="14" height="16.8" viewBox="0 0 20 24" style="flex-shrink:0">
+          <path d="M10 0C5.8 0 2 3.8 2 8c0 6 8 16 8 16s8-10 8-16c0-4.2-3.8-8-8-8z" fill="#9e7fdd" stroke="white" stroke-width="1.5"/>
+        </svg>
+        Participante Individual
+      </div>
+      <div class="leg-row-static">
+        <svg width="14" height="16.8" viewBox="0 0 20 24" style="flex-shrink:0">
+          <rect x="2" y="8" width="16" height="16" rx="2" fill="#9e7fdd" stroke="white" stroke-width="1.5"/>
+        </svg>
+        Agregado Familiar
+      </div>
+      <div style="margin:10px 0 9px; border-top:1px solid rgba(255,255,255,0.15);"></div>
       <b>Freguesia</b>
       <div class="leg-row" data-parish="Senhora da Hora" onclick="toggleFilter('Senhora da Hora')">
         <div class="leg-dot" style="background:#FF595E"></div> Senhora da Hora <span id="cnt-sdh"></span></div>
