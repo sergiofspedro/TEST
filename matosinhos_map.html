@@ -517,7 +517,7 @@ function makeIcon(color, selected, failed, household) {
   var cy = isSquare ? 16 : 8; // glyph center: square centroid vs teardrop bulb centroid
   var inner = failed
     ? '<line x1="7" y1="'+(cy-3)+'" x2="13" y2="'+(cy+3)+'" stroke="white" stroke-width="2"/><line x1="13" y1="'+(cy-3)+'" x2="7" y2="'+(cy+3)+'" stroke="white" stroke-width="2"/>'
-    : '<circle cx="10" cy="'+cy+'" r="3.5" fill="white" opacity="0.85"/>';
+    : '<text x="10" y="'+(cy+1)+'" fill="white" font-size="'+(selected?9:7)+'" font-weight="bold" text-anchor="middle" dominant-baseline="central">' + (household || 1) + '</text>';
   var shape = isSquare
     ? '<rect x="2" y="8" width="16" height="16" rx="2"'
       + ' fill="'+(failed?'#888':color)+'" stroke="white" stroke-width="'+sw+'"/>'
