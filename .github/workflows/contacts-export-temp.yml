@@ -13,6 +13,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Diagnose equip3idade / equipEscolares
+        run: |
+          python3 - << 'PYEOF'
+          import urllib.request
+
+          ARCGIS = 'https://infosig.cm-matosinhos.pt/arcgis/rest/services'
+          for key, layer_url in [('equip3idade', f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/0'),
+                                  ('equipEscolares', f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/1')]:
+              for label, suffix in [('metadata', '?f=json'),
+                                     ('count-no-filter', '/query?where=1%3D1&returnCountOnly=true&f=json'),
+                                     ('first10-pjson', '/query?where=1%3D1&outFields=*&resultRecordCount=10&f=pjson')]:
+                  url = layer_url + suffix
+                  try:
+                      req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 MOVESIT-export/1.0'})
+                      with urllib.request.urlopen(req, timeout=30) as r:
+                          body = r.read().decode('utf-8')
+                      print(f'=== {key} / {label} ===', flush=True)
+                      print(body[:1500], flush=True)
+                  except Exception as e:
+                      print(f'=== {key} / {label} ERROR: {e} ===', flush=True)
+          PYEOF
+
       - name: Fetch ArcGIS layers
         run: |
           python3 - << 'PYEOF'
