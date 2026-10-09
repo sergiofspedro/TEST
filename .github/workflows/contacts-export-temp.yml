@@ -1,0 +1,64 @@
+name: Export Contact Layers Data (throwaway)
+
+on:
+  push:
+    branches: [contacts-export-temp]
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch ArcGIS layers
+        run: |
+          python3 - << 'PYEOF'
+          import urllib.request, json, os
+
+          SERVER = 'https://infosig.cm-matosinhos.pt/server/rest/services'
+          ARCGIS = 'https://infosig.cm-matosinhos.pt/arcgis/rest/services'
+
+          LAYERS = {
+              'equip3idade':    f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/0',
+              'equipEscolares': f'{ARCGIS}/AMB_BairrosDigitais/FeatureServer/1',
+              'saude':          f'{SERVER}/AtividadesEconomicas/MapServer/4',
+              'educacao':       f'{SERVER}/AtividadesEconomicas/MapServer/6',
+              'desporto':       f'{SERVER}/AtividadesEconomicas/MapServer/7',
+              'cultura':        f'{SERVER}/AtividadesEconomicas/MapServer/8',
+              'solidariedade':  f'{SERVER}/AtividadesEconomicas/MapServer/9',
+          }
+
+          os.makedirs('export-data', exist_ok=True)
+          summary = {}
+          for key, layer_url in LAYERS.items():
+              url = layer_url + '/query?where=1%3D1&outFields=*&f=geojson'
+              try:
+                  req = urllib.request.Request(url, headers={'User-Agent': 'MOVESIT-export/1.0'})
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      data = json.loads(r.read().decode('utf-8'))
+                  feats = data.get('features', [])
+                  print(f'{key}: {len(feats)} features', flush=True)
+                  if feats:
+                      print('  sample properties:', json.dumps(feats[0]['properties'], ensure_ascii=False), flush=True)
+                  with open(f'export-data/{key}.geojson', 'w', encoding='utf-8') as f:
+                      json.dump(data, f, ensure_ascii=False)
+                  summary[key] = len(feats)
+              except Exception as e:
+                  print(f'WARN {key} failed: {e}', flush=True)
+                  summary[key] = 'ERROR: ' + str(e)
+
+          with open('export-data/_summary.json', 'w', encoding='utf-8') as f:
+              json.dump(summary, f, ensure_ascii=False, indent=2)
+          print('Summary:', json.dumps(summary, ensure_ascii=False), flush=True)
+          PYEOF
+
+      - name: Commit exported data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add export-data
+          git commit -m "Export raw ArcGIS layer data for contacts report" || echo "nothing to commit"
+          git push
